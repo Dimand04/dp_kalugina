@@ -12,6 +12,7 @@ SOURCES += \
     authorizationwindow.cpp \
     edit_role.cpp \
     edit_user.cpp \
+    edit_widget.cpp \
     main.cpp \
     mainwidget.cpp \
     qpushlabel.cpp
@@ -20,6 +21,7 @@ HEADERS += \
     authorizationwindow.h \
     edit_role.h \
     edit_user.h \
+    edit_widget.h \
     mainwidget.h \
     qpushlabel.h
 
@@ -27,6 +29,7 @@ FORMS += \
     authorizationwindow.ui \
     edit_role.ui \
     edit_user.ui \
+    edit_widget.ui \
     mainwidget.ui
 
 # Default rules for deployment.

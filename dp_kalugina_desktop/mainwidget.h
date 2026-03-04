@@ -43,11 +43,18 @@ private slots:
     void reset_roles_ui();
     void loadRoles();
 
+    void load_categories_table();
+    void reset_categories_ui();
+    void filter_categories(const QString &searchText);
+    void show_edit_category();
+    void table_categories_clicked(int row);
+
 private:
     Ui::MainWidget *ui;
     int userId;
     int userRole;
     int currentUserId;
     int currentRoleId;
+    int currentCategoryId;
 };
 #endif // MAINWIDGET_H

@@ -3,6 +3,7 @@
 #include "authorizationwindow.h"
 #include "edit_role.h"
 #include "edit_user.h"
+#include "edit_widget.h"
 
 MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     : QWidget(parent)
@@ -34,6 +35,10 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->pb_admin_addRole,&QPushButton::clicked, this, &MainWidget::show_edit_role);
     connect(ui->pb_admin_editRole,&QPushButton::clicked, this, &MainWidget::show_edit_role);
     connect(ui->cb_admin_roles, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filter_users);
+    connect(ui->le_admin_categories_search, &QLineEdit::textChanged,this, &MainWidget::filter_categories);
+    connect(ui->pb_admin_addCategory,&QPushButton::clicked, this, &MainWidget::show_edit_category);
+    connect(ui->pb_admin_editCategory,&QPushButton::clicked, this, &MainWidget::show_edit_category);
+    connect(ui->tw_admin_categories, &QTableWidget::cellClicked, this, &MainWidget::table_categories_clicked);
 
     QHeaderView *usersheader = ui->tw_admin_users->horizontalHeader();
     usersheader->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -45,6 +50,11 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     rolesheader->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     rolesheader->setSectionResizeMode(1, QHeaderView::Stretch);
     ui->tw_admin_roles->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    QHeaderView *categoriesheader = ui->tw_admin_categories->horizontalHeader();
+    categoriesheader->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    categoriesheader->setSectionResizeMode(1, QHeaderView::Stretch);
+    ui->tw_admin_categories->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     //this->showMaximized();
     ui->tabw_main->setCurrentIndex(0);
@@ -94,12 +104,15 @@ void MainWidget::tabw_main_change(int index)
     if(index == 0) {
 
     }
+    else if(index == 4) {
+        tabw_administration_change(0);
+    }
 }
 
 void MainWidget::tabw_administration_change(int index)
 {
     if(index == 0) {
-
+        load_categories_table();
     }
     else if(index == 1) {
         load_users_table();
@@ -274,5 +287,72 @@ void MainWidget::loadRoles()
         while (query.next()) {
             ui->cb_admin_roles->addItem(query.value(1).toString(), query.value(0).toInt());
         }
+    }
+}
+
+void MainWidget::load_categories_table()
+{
+    reset_categories_ui();
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery query(db);
+    if (query.exec("SELECT id, name FROM categories")) {
+        ui->tw_admin_categories->setRowCount(0);
+
+        int row = 0;
+        while (query.next()) {
+            ui->tw_admin_categories->insertRow(row);
+            ui->tw_admin_categories->setItem(row, 0, new QTableWidgetItem(query.value(0).toString()));
+            ui->tw_admin_categories->setItem(row, 1, new QTableWidgetItem(query.value(1).toString()));
+            row++;
+        }
+    }
+}
+
+void MainWidget::reset_categories_ui()
+{
+    currentCategoryId = 0;
+    ui->pb_admin_addCategory->setEnabled(true);
+    ui->pb_admin_editCategory->setEnabled(false);
+    ui->pb_admin_deleteCategory->setEnabled(false);
+    ui->tw_admin_categories->clearSelection();
+}
+
+void MainWidget::filter_categories(const QString &searchText)
+{
+    for (int row = 0; row < ui->tw_admin_categories->rowCount(); ++row) {
+        QTableWidgetItem *itemId = ui->tw_admin_categories->item(row, 0);
+        QTableWidgetItem *itemName = ui->tw_admin_categories->item(row, 1);
+        QString idText = itemId ? itemId->text() : "";
+        QString nameText = itemName ? itemName->text() : "";
+        bool match = idText.contains(searchText, Qt::CaseInsensitive) ||
+                     nameText.contains(searchText, Qt::CaseInsensitive);
+        ui->tw_admin_categories->setRowHidden(row, !match);
+    }
+}
+
+void MainWidget::show_edit_category()
+{
+    edit_widget ew(edit_widget::CategoryMode, currentCategoryId, this);
+
+    if (ew.exec() == QDialog::Accepted) {
+        load_categories_table();
+    } else {
+        reset_categories_ui();
+    }
+}
+
+void MainWidget::table_categories_clicked(int row)
+{
+    currentCategoryId = 0;
+    QTableWidgetItem *item = ui->tw_admin_categories->item(row, 0);
+    if (item) {
+        currentCategoryId = item->text().toInt();
+        ui->pb_admin_addCategory->setEnabled(false);
+        ui->pb_admin_editCategory->setEnabled(true);
+        ui->pb_admin_deleteCategory->setEnabled(true);
+        qDebug()<<"ID категории: "<<currentCategoryId;
     }
 }
