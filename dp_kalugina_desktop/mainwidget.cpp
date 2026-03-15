@@ -55,6 +55,7 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->le_warehouse_materials_search, &QLineEdit::textChanged,this, &MainWidget::filter_warehouse);
     connect(ui->cb_warehouse_categories, QOverload<int>::of(&QComboBox::currentIndexChanged),this, &MainWidget::filter_warehouse);
     connect(ui->lb_change_layout,&QPushLabel::clicked, this, &MainWidget::toggleWarehouseLayout);
+    connect(ui->tw_warehouse, &QTableWidget::cellClicked, this, &MainWidget::table_warehouseBatches_clicked);
 
     QHeaderView *usersheader = ui->tw_admin_users->horizontalHeader();
     usersheader->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -162,6 +163,9 @@ void MainWidget::tabw_warehouse_change()
 {
     ui->splitter->setOrientation(Qt::Vertical);
     ui->lb_change_layout->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
+    ui->splitter->setSizes({1, 0});
+    m_isWarehouseDetailsOpened = false;
+    currentMaterialBatchesId = 0;
     loadWarehouseCategories();
     loadWarehouseTable();
 }
@@ -645,8 +649,167 @@ void MainWidget::toggleWarehouseLayout()
     if (ui->splitter->orientation() == Qt::Horizontal) {
         ui->splitter->setOrientation(Qt::Vertical);
         ui->lb_change_layout->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
+        //loadWarehouseTable();
     } else {
         ui->splitter->setOrientation(Qt::Horizontal);
         ui->lb_change_layout->setPixmap(QPixmap(":/res/editvlayoutsplit.png"));
+        //loadWarehouseTable();
+    }
+}
+
+void MainWidget::table_warehouseBatches_clicked(int row)
+{
+    currentMaterialBatchesId = 0;
+    QTableWidgetItem *item = ui->tw_warehouse->item(row, 0);
+    if (item) {
+        currentMaterialBatchesId = item->data(Qt::UserRole).toInt();
+        if (!m_isWarehouseDetailsOpened) {
+            ui->splitter->setSizes({1, 1});
+            m_isWarehouseDetailsOpened = true;
+        }
+        qDebug()<<"ID записи: "<<currentMaterialBatchesId;
+        loadWarehouseBachesTable();
+        loadWarehouseMovementsTable();
+    }
+}
+
+void MainWidget::loadWarehouseBachesTable()
+{
+    ui->tw_warehouse_batches->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery query(db);
+
+    QString sql =
+        "SELECT "
+        "  b.incoming_date, "
+        "  s.name AS supplier_name, "
+        "  b.current_quantity, "
+        "  b.purchase_price, "
+        "  DATEDIFF(NOW(), b.incoming_date) AS days_on_stock "
+        "FROM batches b "
+        "JOIN suppliers s ON b.supplier_id = s.id "
+        "WHERE b.material_id = :matId AND b.current_quantity > 0 "
+        "ORDER BY b.incoming_date ASC";
+
+    query.prepare(sql);
+    query.bindValue(":matId", currentMaterialBatchesId);
+
+    if (query.exec()) {
+        ui->tw_warehouse_batches->setRowCount(0);
+        int row = 0;
+
+        while (query.next()) {
+            ui->tw_warehouse_batches->insertRow(row);
+
+            QDateTime incomingDate = query.value(0).toDateTime();
+            QString supplier = query.value(1).toString();
+            double quantity = query.value(2).toDouble();
+            double price = query.value(3).toDouble();
+            int daysOnStock = query.value(4).toInt();
+
+            QTableWidgetItem *itemDate = new QTableWidgetItem(incomingDate.toString("dd.MM.yyyy HH:mm"));
+            QTableWidgetItem *itemSupplier = new QTableWidgetItem(supplier);
+
+            QTableWidgetItem *itemQty = new QTableWidgetItem(QString::number(quantity, 'f', 3));
+            itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
+            itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            QTableWidgetItem *itemDays = new QTableWidgetItem(QString::number(daysOnStock));
+            itemDays->setTextAlignment(Qt::AlignCenter);
+
+            ui->tw_warehouse_batches->setItem(row, 0, itemDate);
+            ui->tw_warehouse_batches->setItem(row, 1, itemSupplier);
+            ui->tw_warehouse_batches->setItem(row, 2, itemQty);
+            ui->tw_warehouse_batches->setItem(row, 3, itemPrice);
+            ui->tw_warehouse_batches->setItem(row, 4, itemDays);
+
+            row++;
+        }
+    }
+}
+
+void MainWidget::loadWarehouseMovementsTable()
+{
+    ui->tw_warehouse_movements->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery query(db);
+
+    QString sql =
+        "SELECT "
+        "  d.doc_date, "
+        "  d.doc_type, "
+        "  d.id AS doc_id, "
+        "  it.quantity, "
+        "  u.login "
+        "FROM inventory_transactions it "
+        "JOIN documents d ON it.document_id = d.id "
+        "JOIN users u ON d.user_id = u.id "
+        "WHERE it.material_id = :matId "
+        "ORDER BY d.doc_date ASC";
+
+    query.prepare(sql);
+    query.bindValue(":matId", currentMaterialBatchesId);
+
+    if (query.exec()) {
+        ui->tw_warehouse_movements->setRowCount(0);
+        ui->tw_warehouse_movements->setSortingEnabled(false);
+
+        double runningBalance = 0.0;
+        int row = 0;
+
+        while (query.next()) {
+            ui->tw_warehouse_movements->insertRow(row);
+
+            QDateTime dateTime = query.value(0).toDateTime();
+            QString typeStr = query.value(1).toString();
+            int docId = query.value(2).toInt();
+            double qty = query.value(3).toDouble();
+            QString user = query.value(4).toString();
+
+            QString displayType;
+            QColor rowColor;
+
+            if (typeStr == "incoming") {
+                displayType = "Приход";
+                rowColor = QColor(200, 245, 200);
+                runningBalance += qty;
+            } else {
+                displayType = "Расход";
+                rowColor = QColor(255, 210, 210);
+                runningBalance -= qty;
+                qty = -qty;
+            }
+
+            QTableWidgetItem *itemDate    = new QTableWidgetItem(dateTime.toString("dd.MM.yy HH:mm"));
+            QTableWidgetItem *itemType    = new QTableWidgetItem(displayType);
+            QTableWidgetItem *itemDoc     = new QTableWidgetItem(QString("Док. №%1").arg(docId));
+            QTableWidgetItem *itemQty     = new QTableWidgetItem(QString::number(qty, 'f', 3));
+            QTableWidgetItem *itemBalance = new QTableWidgetItem(QString::number(runningBalance, 'f', 3));
+            QTableWidgetItem *itemUser    = new QTableWidgetItem(user);
+
+            itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemBalance->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemBalance->setFont(QFont("Segoe UI", -1, QFont::Bold));
+
+            QList<QTableWidgetItem*> allItems = {itemDate, itemType, itemDoc, itemQty, itemBalance, itemUser};
+
+            for (int col = 0; col < allItems.size(); ++col) {
+                QTableWidgetItem *item = allItems.at(col);
+                item->setBackground(rowColor);
+                ui->tw_warehouse_movements->setItem(row, col, item);
+            }
+
+            row++;
+        }
+        ui->tw_warehouse_movements->setSortingEnabled(true);
+        ui->tw_warehouse_movements->scrollToBottom();
     }
 }

@@ -8,6 +8,7 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QDateTime>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -66,6 +67,9 @@ private slots:
     void filter_warehouse();
     void loadWarehouseCategories();
     void toggleWarehouseLayout();
+    void table_warehouseBatches_clicked(int row);
+    void loadWarehouseBachesTable();
+    void loadWarehouseMovementsTable();
 
 private:
     Ui::MainWidget *ui;
@@ -76,5 +80,8 @@ private:
     int currentCategoryId;
     int currentMaterialId;
     int currentSupplierId;
+    int currentMaterialBatchesId;
+
+    bool m_isWarehouseDetailsOpened = false;
 };
 #endif // MAINWIDGET_H
