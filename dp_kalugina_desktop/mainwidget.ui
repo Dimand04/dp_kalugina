@@ -29,7 +29,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabw_main">
      <property name="currentIndex">
-      <number>4</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -45,6 +45,204 @@
       <attribute name="title">
        <string>Склад</string>
       </attribute>
+      <layout class="QGridLayout" name="gridLayout_9">
+       <property name="leftMargin">
+        <number>3</number>
+       </property>
+       <property name="topMargin">
+        <number>3</number>
+       </property>
+       <property name="rightMargin">
+        <number>3</number>
+       </property>
+       <property name="bottomMargin">
+        <number>3</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QSplitter" name="splitter">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <widget class="QWidget" name="layoutWidget">
+          <layout class="QGridLayout" name="gridLayout_8">
+           <item row="0" column="6">
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="4">
+            <widget class="QComboBox" name="cb_warehouse_categories">
+             <property name="sizeAdjustPolicy">
+              <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushLabel" name="lb_change_layout">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="scaledContents">
+              <bool>true</bool>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <property name="margin">
+              <number>0</number>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QLineEdit" name="le_warehouse_materials_search">
+             <property name="placeholderText">
+              <string>Поиск материала</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="7">
+            <widget class="QPushButton" name="pushButton">
+             <property name="text">
+              <string>Инвентаризация</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Policy::Fixed</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>39</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Вид:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0" colspan="8">
+            <widget class="QTableWidget" name="tw_warehouse">
+             <property name="editTriggers">
+              <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+             </property>
+             <property name="verticalScrollMode">
+              <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
+             </property>
+             <attribute name="horizontalHeaderVisible">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="horizontalHeaderHighlightSections">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+             <attribute name="verticalHeaderHighlightSections">
+              <bool>true</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Категория</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Материал</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Остаток</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Ед. изм.</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Сред. цена</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Сумма</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="gridLayoutWidget">
+          <layout class="QGridLayout" name="gridLayout_7">
+           <property name="horizontalSpacing">
+            <number>6</number>
+           </property>
+           <item row="0" column="0">
+            <widget class="QTabWidget" name="tabWidget">
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <widget class="QWidget" name="tab_9">
+              <attribute name="title">
+               <string>Tab 1</string>
+              </attribute>
+             </widget>
+             <widget class="QWidget" name="tab_10">
+              <attribute name="title">
+               <string>Tab 2</string>
+              </attribute>
+             </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="tab_4">
       <attribute name="title">
@@ -92,7 +290,229 @@
            </property>
            <item row="0" column="0">
             <layout class="QGridLayout" name="gridLayout_5">
-             <item row="2" column="0" colspan="2">
+             <item row="1" column="4">
+              <widget class="QLineEdit" name="le_admin_materials_search">
+               <property name="placeholderText">
+                <string>Поиск</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="4">
+              <widget class="QTableWidget" name="tw_admin_materials">
+               <property name="editTriggers">
+                <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+               </property>
+               <property name="selectionMode">
+                <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+               </property>
+               <property name="verticalScrollMode">
+                <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
+               </property>
+               <attribute name="horizontalHeaderHighlightSections">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderVisible">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderHighlightSections">
+                <bool>false</bool>
+               </attribute>
+               <column>
+                <property name="text">
+                 <string>ID</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Материал</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+             <item row="1" column="3" rowspan="2">
+              <widget class="Line" name="line_2">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <item>
+                <widget class="QPushButton" name="pb_admin_addCategory">
+                 <property name="text">
+                  <string>Создать</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pb_admin_editCategory">
+                 <property name="text">
+                  <string>Изменить</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pb_admin_deleteCategory">
+                 <property name="text">
+                  <string>Удалить</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_4">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="7">
+              <layout class="QVBoxLayout" name="verticalLayout_4">
+               <item>
+                <widget class="QPushButton" name="pb_admin_addSupplier">
+                 <property name="text">
+                  <string>Создать</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pb_admin_editSupplier">
+                 <property name="text">
+                  <string>Изменить</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pb_admin_deleteSupplier">
+                 <property name="text">
+                  <string>Удалить</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_5">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="6">
+              <widget class="QLineEdit" name="le_admin_suppliers_search">
+               <property name="placeholderText">
+                <string>Поиск</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="5">
+              <layout class="QVBoxLayout" name="verticalLayout_3">
+               <item>
+                <widget class="QPushButton" name="pb_admin_addMaterial">
+                 <property name="text">
+                  <string>Создать</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pb_admin_editMaterial">
+                 <property name="text">
+                  <string>Изменить</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pb_admin_deleteMaterial">
+                 <property name="text">
+                  <string>Удалить</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="verticalSpacer_3">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Vertical</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>20</width>
+                   <height>40</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="8" rowspan="2">
+              <widget class="Line" name="line_3">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="6">
+              <widget class="QTableWidget" name="tw_admin_suppliers">
+               <property name="editTriggers">
+                <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+               </property>
+               <property name="selectionMode">
+                <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+               </property>
+               <property name="selectionBehavior">
+                <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+               </property>
+               <property name="verticalScrollMode">
+                <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
+               </property>
+               <attribute name="horizontalHeaderVisible">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="horizontalHeaderHighlightSections">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderVisible">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderHighlightSections">
+                <bool>false</bool>
+               </attribute>
+               <column>
+                <property name="text">
+                 <string>ID</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Поставщик</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLineEdit" name="le_admin_categories_search">
+               <property name="placeholderText">
+                <string>Поиск</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
               <widget class="QTableWidget" name="tw_admin_categories">
                <property name="focusPolicy">
                 <enum>Qt::FocusPolicy::NoFocus</enum>
@@ -158,58 +578,6 @@
                  <string>Категория</string>
                 </property>
                </column>
-              </widget>
-             </item>
-             <item row="2" column="2">
-              <layout class="QVBoxLayout" name="verticalLayout_2">
-               <item>
-                <widget class="QPushButton" name="pb_admin_addCategory">
-                 <property name="text">
-                  <string>Создать</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="pb_admin_editCategory">
-                 <property name="text">
-                  <string>Изменить</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="pb_admin_deleteCategory">
-                 <property name="text">
-                  <string>Удалить</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="verticalSpacer_4">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>40</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </item>
-             <item row="1" column="3" rowspan="2">
-              <widget class="Line" name="line_2">
-               <property name="orientation">
-                <enum>Qt::Orientation::Vertical</enum>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLineEdit" name="le_admin_categories_search">
-               <property name="placeholderText">
-                <string>Поиск</string>
-               </property>
               </widget>
              </item>
             </layout>
@@ -365,7 +733,11 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QComboBox" name="cb_admin_roles"/>
+              <widget class="QComboBox" name="cb_admin_roles">
+               <property name="sizeAdjustPolicy">
+                <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+               </property>
+              </widget>
              </item>
              <item row="2" column="0" colspan="2">
               <widget class="QTableWidget" name="tw_admin_users">
@@ -457,6 +829,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QPushLabel</class>
+   <extends>QLabel</extends>
+   <header location="global">qpushlabel.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

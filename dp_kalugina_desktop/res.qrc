@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/icons"/>
+    <qresource prefix="/">
+        <file>res/edithlayoutsplit.png</file>
+        <file>res/editvlayoutsplit.png</file>
+    </qresource>
+</RCC>

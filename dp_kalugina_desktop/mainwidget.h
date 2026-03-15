@@ -29,6 +29,7 @@ private slots:
 
     void tabw_main_change(int index);
     void tabw_administration_change(int index);
+    void tabw_warehouse_change();
 
     void load_users_table();
     void filter_users();
@@ -49,6 +50,23 @@ private slots:
     void show_edit_category();
     void table_categories_clicked(int row);
 
+    void load_materials_table();
+    void reset_materials_ui();
+    void filter_materials(const QString &searchText);
+    void show_edit_material();
+    void table_materials_clicked(int row);
+
+    void load_suppliers_table();
+    void reset_suppliers_ui();
+    void filter_suppliers(const QString &searchText);
+    void show_edit_supplier();
+    void table_suppliers_clicked(int row);
+
+    void loadWarehouseTable();
+    void filter_warehouse();
+    void loadWarehouseCategories();
+    void toggleWarehouseLayout();
+
 private:
     Ui::MainWidget *ui;
     int userId;
@@ -56,5 +74,7 @@ private:
     int currentUserId;
     int currentRoleId;
     int currentCategoryId;
+    int currentMaterialId;
+    int currentSupplierId;
 };
 #endif // MAINWIDGET_H

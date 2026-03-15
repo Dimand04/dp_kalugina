@@ -17,8 +17,8 @@ class edit_widget : public QDialog
 public:
     enum Mode {
         CategoryMode,
-        StatusMode,
-        UnitMode
+        MaterialMode,
+        SupplierMode
     };
 
     explicit edit_widget(Mode mode, int id = 0, QWidget *parent = nullptr);
@@ -27,6 +27,7 @@ public:
 private slots:
     void loadData();
     void saveData();
+    void loadCategories();
 
 private:
     Ui::edit_widget *ui;
