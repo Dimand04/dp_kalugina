@@ -9,6 +9,10 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDateTime>
+#include <QTableWidgetItem>
+#include <QDoubleSpinBox>
+#include <QComboBox>
+#include <QCompleter>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -19,6 +23,13 @@ QT_END_NAMESPACE
 class MainWidget : public QWidget
 {
     Q_OBJECT
+
+struct MaterialEntry {
+    int id;
+    QString category;
+    QString unit;
+};
+QMap<int, MaterialEntry> m_materialsCache;
 
 public:
     MainWidget(int userId, int userRole, QWidget *parent = nullptr);
@@ -31,6 +42,7 @@ private slots:
     void tabw_main_change(int index);
     void tabw_administration_change(int index);
     void tabw_warehouse_change();
+    void tabw_incoming_change();
 
     void load_users_table();
     void filter_users();
@@ -71,6 +83,35 @@ private slots:
     void loadWarehouseBachesTable();
     void loadWarehouseMovementsTable();
 
+    void loadInventoryHistoryTable();
+    void filter_inventory();
+    void history_period_currentIndexChanged(int index);
+    void table_inventory_clicked(int row);
+    void loadInventoryDetails();
+    void showInventory();
+    void on_tw_inventoryDetails_itemChanged(QTableWidgetItem *item);
+    void inventory_cancel();
+    void closeInventoryWorkArea();
+    void saveInventory();
+
+    void loadIncomingSuppliers();
+    void incoming_period_currentIndexChanged(int index);
+    void filter_incoming();
+    void loadIncomingHistoryTable();
+    void toggleIncomingLayout();
+    void table_incoming_clicked(int row);
+    void loadIncomingDetails();
+    void showIncoming();
+    void incoming_cancel();
+    void closeIncomingWorkArea();
+    void loadAddIncomingSuppliers();
+    void addEditorRow();
+    void addPlusRow();
+    void removeEditorRow(QWidget *senderWidget);
+    void fillIncomingMaterialCombo(QComboBox *cb);
+    void updateEditorRowMetadata(int row, int materialId);
+    void updateIncomingTotalSum();
+
 private:
     Ui::MainWidget *ui;
     int userId;
@@ -81,7 +122,16 @@ private:
     int currentMaterialId;
     int currentSupplierId;
     int currentMaterialBatchesId;
+    int currentInventoryId;
+    int currentIncomingId;
 
     bool m_isWarehouseDetailsOpened = false;
+    bool m_isFirstWarehouseOpen = true;
+    bool m_isInventoryLoading = false;
+    bool m_isIncomingDetailsOpened = false;
+    bool m_isFirstIncomingOpen = true;
+
+    QDate getEarliestInventoryDate();
+    QDate getEarliestIncomingDate();
 };
 #endif // MAINWIDGET_H
