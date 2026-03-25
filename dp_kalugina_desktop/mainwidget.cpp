@@ -144,6 +144,16 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->tw_incoming_history, &QTableWidget::cellClicked, this, &MainWidget::table_incoming_clicked);
     connect(ui->pb_incoming_add, &QPushButton::clicked, this, &MainWidget::showIncoming);
     connect(ui->pb_new_incoming_cancel, &QPushButton::clicked, this, &MainWidget::incoming_cancel);
+    connect(ui->cb_inc_add_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::on_cb_inc_add_material_currentIndexChanged);
+    connect(ui->dsb_inc_add_qty, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWidget::calculateCurrentRowSum);
+    connect(ui->dsb_inc_add_price, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWidget::calculateCurrentRowSum);
+    connect(ui->pb_inc_add_row, &QPushButton::clicked, this, &MainWidget::insertIncomingRow);
+    connect(ui->pb_inc_clear_fields, &QPushButton::clicked, this, &MainWidget::clearIncomingInputBar);
+    connect(ui->tw_incoming_editor, &QTableWidget::cellClicked, this, [this](int row, int column){
+        Q_UNUSED(column);
+        deleteIncomingRow(row);
+    });
+    connect(ui->pb_new_incoming_save, &QPushButton::clicked, this, &MainWidget::saveIncoming);
 
     // НАЧАЛЬНОЕ СОСТОЯНИЕ
     ui->tabw_main->setCurrentIndex(0);
@@ -1784,6 +1794,7 @@ void MainWidget::showIncoming()
     ui->lb_new_incoming_total_value->setText("0.00");
 
     loadAddIncomingSuppliers();
+    loadAddIncomingMaterials();
     ui->de_new_incoming_date->setDate(QDate::currentDate());
 
     ui->tw_incoming_editor->setRowCount(0);
@@ -1814,8 +1825,6 @@ void MainWidget::showIncoming()
     } else {
         qCritical() << "Ошибка загрузки кэша:" << q.lastError().text();
     }
-    addEditorRow();
-    addPlusRow();
 }
 
 void MainWidget::incoming_cancel()
@@ -1869,183 +1878,279 @@ void MainWidget::loadAddIncomingSuppliers()
     ui->cb_new_incoming_supplier->setCurrentIndex(0);
 }
 
-void MainWidget::addEditorRow()
+void MainWidget::loadAddIncomingMaterials()
 {
-    int row = ui->tw_incoming_editor->rowCount() > 0 ? ui->tw_incoming_editor->rowCount() - 1 : 0;
-    ui->tw_incoming_editor->insertRow(row);
+    ui->cb_inc_add_material->clear();
 
-    QComboBox *cb = new QComboBox();
-    fillIncomingMaterialCombo(cb);
-
-    QDoubleSpinBox *dsbQty = new QDoubleSpinBox();
-    dsbQty->setRange(0, 999999); dsbQty->setDecimals(3);
-    dsbQty->setButtonSymbols(QAbstractSpinBox::NoButtons);
-
-    QDoubleSpinBox *dsbPrice = new QDoubleSpinBox();
-    dsbPrice->setRange(0, 999999); dsbPrice->setDecimals(2);
-    dsbPrice->setButtonSymbols(QAbstractSpinBox::NoButtons);
-
-    dsbQty->setKeyboardTracking(false);
-    dsbPrice->setKeyboardTracking(false);
-
-    QToolButton *btnMinus = new QToolButton();
-    btnMinus->setText("-");
-    btnMinus->setStyleSheet("color: red; font-weight: bold;");
-
-    ui->tw_incoming_editor->setCellWidget(row, 0, cb);
-    ui->tw_incoming_editor->setItem(row, 1, new QTableWidgetItem("-"));
-    ui->tw_incoming_editor->setCellWidget(row, 2, dsbQty);
-    ui->tw_incoming_editor->setItem(row, 3, new QTableWidgetItem("-"));
-    ui->tw_incoming_editor->setCellWidget(row, 4, dsbPrice);
-    ui->tw_incoming_editor->setItem(row, 5, new QTableWidgetItem("0.00"));
-    ui->tw_incoming_editor->setCellWidget(row, 6, btnMinus);
-
-    ui->tw_incoming_editor->item(row, 1)->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-    ui->tw_incoming_editor->item(row, 3)->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-    ui->tw_incoming_editor->item(row, 5)->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-
-    connect(cb, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, cb](){
-        int curr = ui->tw_incoming_editor->indexAt(cb->pos()).row();
-        if (curr != -1) updateEditorRowMetadata(curr, cb->currentData().toInt());
-    });
-
-    auto updateRowSum = [this, dsbQty](){
-        int curr = ui->tw_incoming_editor->indexAt(dsbQty->pos()).row();
-        if (curr != -1) {
-            QDoubleSpinBox *q = qobject_cast<QDoubleSpinBox*>(ui->tw_incoming_editor->cellWidget(curr, 2));
-            QDoubleSpinBox *p = qobject_cast<QDoubleSpinBox*>(ui->tw_incoming_editor->cellWidget(curr, 4));
-            if (q && p) {
-                double sum = q->value() * p->value();
-                ui->tw_incoming_editor->item(curr, 5)->setText(QString::number(sum, 'f', 2));
-                updateIncomingTotalSum();
-            }
-        }
-    };
-    connect(dsbQty, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, updateRowSum);
-    connect(dsbPrice, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, updateRowSum);
-
-    connect(btnMinus, &QToolButton::clicked, this, [this, btnMinus](){
-        removeEditorRow(btnMinus);
-    });
-}
-
-void MainWidget::addPlusRow()
-{
-    int row = ui->tw_incoming_editor->rowCount();
-    ui->tw_incoming_editor->insertRow(row);
-
-    QToolButton *btnPlus = new QToolButton();
-    btnPlus->setText("+");
-    btnPlus->setMinimumWidth(40);
-    btnPlus->setStyleSheet("background-color: #e1f5fe; font-weight: bold;");
-
-    ui->tw_incoming_editor->setCellWidget(row, 6, btnPlus);
-
-    connect(btnPlus, &QToolButton::clicked, this, &MainWidget::addEditorRow);
-}
-
-void MainWidget::removeEditorRow(QWidget *senderWidget)
-{
-    int row = -1;
-    for(int i=0; i < ui->tw_incoming_editor->rowCount(); ++i) {
-        if(ui->tw_incoming_editor->cellWidget(i, 6) == senderWidget) {
-            row = i; break;
-        }
-    }
-
-    if (row == 0 && ui->tw_incoming_editor->rowCount() == 2) {
-        QComboBox *cb = qobject_cast<QComboBox*>(ui->tw_incoming_editor->cellWidget(0, 0));
-        QDoubleSpinBox *dsb1 = qobject_cast<QDoubleSpinBox*>(ui->tw_incoming_editor->cellWidget(0, 2));
-        QDoubleSpinBox *dsb2 = qobject_cast<QDoubleSpinBox*>(ui->tw_incoming_editor->cellWidget(0, 4));
-        if(cb) cb->setCurrentIndex(0);
-        if(dsb1) dsb1->setValue(0);
-        if(dsb2) dsb2->setValue(0);
-    } else {
-        ui->tw_incoming_editor->removeRow(row);
-    }
-    updateIncomingTotalSum();
-}
-
-void MainWidget::fillIncomingMaterialCombo(QComboBox *cb)
-{
-    if (!cb) return;
-
-    cb->clear();
-
-    cb->addItem("Выберите материал", 0);
-
-    cb->setEditable(false);
-
-    cb->setEditable(true);
-    cb->setInsertPolicy(QComboBox::NoInsert);
-    cb->completer()->setCompletionMode(QCompleter::PopupCompletion);
-    cb->completer()->setFilterMode(Qt::MatchContains);
+    ui->cb_inc_add_material->addItem("Выберите материал", 0);
 
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
     if (!db.isValid() || !db.isOpen()) return;
 
     QSqlQuery query(db);
-    if (query.exec("SELECT id, name FROM materials ORDER BY name ASC")) {
+    if (query.exec("SELECT id, name FROM materials ORDER BY name")) {
         while (query.next()) {
-            int id = query.value(0).toInt();
-            QString name = query.value(1).toString();
-
-            cb->addItem(name, id);
+            ui->cb_inc_add_material->addItem(query.value(1).toString(), query.value(0).toInt());
         }
-    } else {
-        qCritical() << "Ошибка загрузки материалов для комбобокса:" << query.lastError().text();
     }
-    cb->setCurrentIndex(0);
+    ui->cb_inc_add_material->setCurrentIndex(0);
 }
 
-void MainWidget::updateEditorRowMetadata(int row, int materialId)
+void MainWidget::on_cb_inc_add_material_currentIndexChanged(int index)
 {
-    QTableWidgetItem *itemCat = ui->tw_incoming_editor->item(row, 1);
-    QTableWidgetItem *itemUnit = ui->tw_incoming_editor->item(row, 3);
-
-    if (!itemCat || !itemUnit) return;
+    int materialId = ui->cb_inc_add_material->currentData().toInt();
 
     if (materialId <= 0) {
-        itemCat->setText("-");
-        itemUnit->setText("-");
+        ui->le_inc_add_category->clear();
+        ui->le_inc_add_unit->clear();
+        ui->dsb_inc_add_qty->setValue(0);
+        ui->dsb_inc_add_price->setValue(0);
+        ui->le_inc_add_sum->setText("0.00");
         return;
     }
 
     if (m_materialsCache.contains(materialId)) {
         MaterialEntry entry = m_materialsCache.value(materialId);
 
-        itemCat->setText(entry.category);
-        itemUnit->setText(entry.unit);
-    } else {
-        itemCat->setText("Ошибка");
-        itemUnit->setText("?");
+        ui->le_inc_add_category->setText(entry.category);
+        ui->le_inc_add_unit->setText(entry.unit);
+
+        ui->dsb_inc_add_qty->setValue(1.000);
+
+        ui->dsb_inc_add_price->setValue(0.00);
+
+        calculateCurrentRowSum();
+    }
+}
+
+void MainWidget::calculateCurrentRowSum()
+{
+    double qty = ui->dsb_inc_add_qty->value();
+    double price = ui->dsb_inc_add_price->value();
+    double total = qty * price;
+
+    ui->le_inc_add_sum->setText(QString::number(total, 'f', 2));
+}
+
+void MainWidget::insertIncomingRow()
+{
+    int matId = ui->cb_inc_add_material->currentData().toInt();
+    QString matName = ui->cb_inc_add_material->currentText();
+    QString category = ui->le_inc_add_category->text();
+    QString unit = ui->le_inc_add_unit->text();
+    double qty = ui->dsb_inc_add_qty->value();
+    double price = ui->dsb_inc_add_price->value();
+    double sum = qty * price;
+
+    if (matId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Выберите материал из списка!");
+        ui->cb_inc_add_material->setFocus();
+        return;
+    }
+    if (qty <= 0.0001) {
+        QMessageBox::warning(this, "Внимание", "Количество должно быть больше нуля!");
+        ui->dsb_inc_add_qty->setFocus();
+        return;
+    }
+    if (price <= 0.001) {
+        QMessageBox::warning(this, "Внимание", "Укажите цену закупки!");
+        ui->dsb_inc_add_price->setFocus();
+        return;
+    }
+
+    int row = 0;
+    ui->tw_incoming_editor->insertRow(row);
+
+    QTableWidgetItem *itemMat  = new QTableWidgetItem(matName);
+    QTableWidgetItem *itemCat  = new QTableWidgetItem(category);
+    QTableWidgetItem *itemUnit = new QTableWidgetItem(unit);
+
+    QTableWidgetItem *itemQty   = new QTableWidgetItem(QString::number(qty, 'f', 3));
+    QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
+    QTableWidgetItem *itemSum   = new QTableWidgetItem(QString::number(sum, 'f', 2));
+
+    itemMat->setData(Qt::UserRole, matId);
+
+    itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    itemSum->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    itemMat->setFlags(flags);
+    itemCat->setFlags(flags);
+    itemQty->setFlags(flags);
+    itemUnit->setFlags(flags);
+    itemPrice->setFlags(flags);
+    itemSum->setFlags(flags);
+
+    ui->tw_incoming_editor->setItem(row, 0, itemMat);
+    ui->tw_incoming_editor->setItem(row, 1, itemCat);
+    ui->tw_incoming_editor->setItem(row, 2, itemQty);
+    ui->tw_incoming_editor->setItem(row, 3, itemUnit);
+    ui->tw_incoming_editor->setItem(row, 4, itemPrice);
+    ui->tw_incoming_editor->setItem(row, 5, itemSum);
+
+    clearIncomingInputBar();
+    updateIncomingTotalSum();
+
+    qDebug() << "Добавлен материал ID:" << matId << "в таблицу редактора.";
+}
+
+void MainWidget::clearIncomingInputBar()
+{
+    ui->cb_inc_add_material->setCurrentIndex(0);
+    ui->le_inc_add_category->clear();
+    ui->dsb_inc_add_qty->setValue(0);
+    ui->le_inc_add_unit->clear();
+    ui->dsb_inc_add_price->setValue(0);
+    ui->le_inc_add_sum->setText("0.00");
+
+    ui->cb_inc_add_material->setFocus();
+}
+
+void MainWidget::deleteIncomingRow(int row)
+{
+    if (row < 0 || row >= ui->tw_incoming_editor->rowCount()) return;
+
+    QString matName = ui->tw_incoming_editor->item(row, 0)->text();
+
+    QMessageBox msgBox(
+        QMessageBox::Question,
+        "Удаление позиции",
+        QString("Вы действительно хотите удалить '%1' из списка?").arg(matName),
+        QMessageBox::Yes | QMessageBox::No,
+        this
+        );
+    msgBox.setButtonText(QMessageBox::Yes, "Удалить");
+    msgBox.setButtonText(QMessageBox::No, "Отмена");
+
+    if (msgBox.exec() == QMessageBox::Yes) {
+        ui->tw_incoming_editor->removeRow(row);
+
+        updateIncomingTotalSum();
+
+        qDebug() << "Строка" << row << "удалена пользователем.";
     }
 }
 
 void MainWidget::updateIncomingTotalSum()
 {
-    double total = 0.0;
+    double totalSum = 0.0;
 
-    int rowsCount = ui->tw_incoming_editor->rowCount();
+    for (int row = 0; row < ui->tw_incoming_editor->rowCount(); ++row) {
 
-    for (int i = 0; i < rowsCount - 1; ++i) {
-
-        QTableWidgetItem *item = ui->tw_incoming_editor->item(i, 5);
+        QTableWidgetItem *item = ui->tw_incoming_editor->item(row, 5);
 
         if (item) {
-            QString valueStr = item->text();
+            bool ok;
+            double value = item->text().toDouble(&ok);
 
-            if (valueStr != "-" && !valueStr.isEmpty()) {
-                total += valueStr.toDouble();
+            if (ok) {
+                totalSum += value;
             }
         }
     }
 
-    ui->lb_new_incoming_total_value->setText(QString::number(total, 'f', 2));
+    ui->lb_new_incoming_total_value->setText(QString::number(totalSum, 'f', 2));
 
-    if (total > 0) {
-        ui->lb_new_incoming_total_value->setStyleSheet("font-weight: bold; color: #006400; font-size: 14pt;");
+    if (totalSum > 0) {
+        ui->lb_new_incoming_total_value->setStyleSheet("font-weight: bold; color: #006400; font-size: 13pt;");
     } else {
-        ui->lb_new_incoming_total_value->setStyleSheet("font-weight: normal; color: black; font-size: 14pt;");
+        ui->lb_new_incoming_total_value->setStyleSheet("font-weight: normal; color: black; font-size: 13pt;");
+    }
+}
+
+void MainWidget::saveIncoming()
+{
+    int supplierId = ui->cb_new_incoming_supplier->currentData().toInt();
+    if (supplierId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Пожалуйста, выберите поставщика!");
+        return;
+    }
+
+    int rows = ui->tw_incoming_editor->rowCount();
+    if (rows == 0) {
+        QMessageBox::warning(this, "Внимание", "Таблица товаров пуста!");
+        return;
+    }
+
+    QMessageBox::StandardButton res = QMessageBox::question(this, "Подтверждение",
+                                                            "Провести приходную накладную и обновить остатки?",
+                                                            QMessageBox::Yes | QMessageBox::No);
+    if (res != QMessageBox::Yes) return;
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.transaction()) {
+        qCritical() << "Не удалось начать транзакцию";
+        return;
+    }
+
+    QSqlQuery query(db);
+
+    QDateTime finalDateTime(ui->de_new_incoming_date->date(), QTime::currentTime());
+
+    query.prepare("INSERT INTO documents (doc_type, doc_date, user_id, description) "
+                  "VALUES ('incoming', :date, :userId, :desc)");
+    query.bindValue(":date", finalDateTime);
+    query.bindValue(":userId", userId);
+    query.bindValue(":desc", ui->le_new_incoming_description->text().trimmed());
+
+    if (!query.exec()) {
+        db.rollback();
+        QMessageBox::critical(this, "Ошибка", "Не удалось создать заголовок документа.");
+        return;
+    }
+
+    int docId = query.lastInsertId().toInt();
+
+    for (int row = 0; row < rows; ++row) {
+        int matId = ui->tw_incoming_editor->item(row, 0)->data(Qt::UserRole).toInt();
+        double qty = ui->tw_incoming_editor->item(row, 2)->text().toDouble();
+        double price = ui->tw_incoming_editor->item(row, 4)->text().toDouble();
+
+        QSqlQuery qBatch(db);
+        qBatch.prepare("INSERT INTO batches (material_id, supplier_id, incoming_date, "
+                       "initial_quantity, current_quantity, purchase_price) "
+                       "VALUES (:matId, :supId, :date, :iniQty, :curQty, :price)");
+        qBatch.bindValue(":matId", matId);
+        qBatch.bindValue(":supId", supplierId);
+        qBatch.bindValue(":date", finalDateTime);
+        qBatch.bindValue(":iniQty", qty);
+        qBatch.bindValue(":curQty", qty);
+        qBatch.bindValue(":price", price);
+
+        if (!qBatch.exec()) {
+            db.rollback();
+            QMessageBox::critical(this, "Ошибка", "Ошибка при создании партии в строке " + QString::number(row+1));
+            return;
+        }
+
+        int batchId = qBatch.lastInsertId().toInt();
+
+        QSqlQuery qTrans(db);
+        qTrans.prepare("INSERT INTO inventory_transactions (document_id, material_id, batch_id, quantity, price) "
+                       "VALUES (:docId, :matId, :batchId, :qty, :price)");
+        qTrans.bindValue(":docId", docId);
+        qTrans.bindValue(":matId", matId);
+        qTrans.bindValue(":batchId", batchId);
+        qTrans.bindValue(":qty", qty);
+        qTrans.bindValue(":price", price);
+
+        if (!qTrans.exec()) {
+            db.rollback();
+            QMessageBox::critical(this, "Ошибка", "Ошибка при записи транзакции в строке " + QString::number(row+1));
+            return;
+        }
+    }
+
+    if (db.commit()) {
+        QMessageBox::information(this, "Успех", "Поступление успешно проведено.");
+
+        closeIncomingWorkArea();
+
+        loadWarehouseTable();
+    } else {
+        db.rollback();
+        QMessageBox::critical(this, "Ошибка", "Критическая ошибка фиксации данных в БД.");
     }
 }

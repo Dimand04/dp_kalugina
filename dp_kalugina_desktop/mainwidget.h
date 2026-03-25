@@ -105,12 +105,14 @@ private slots:
     void incoming_cancel();
     void closeIncomingWorkArea();
     void loadAddIncomingSuppliers();
-    void addEditorRow();
-    void addPlusRow();
-    void removeEditorRow(QWidget *senderWidget);
-    void fillIncomingMaterialCombo(QComboBox *cb);
-    void updateEditorRowMetadata(int row, int materialId);
+    void loadAddIncomingMaterials();
+    void on_cb_inc_add_material_currentIndexChanged(int index);
+    void calculateCurrentRowSum();
+    void insertIncomingRow();
+    void clearIncomingInputBar();
+    void deleteIncomingRow(int row);
     void updateIncomingTotalSum();
+    void saveIncoming();
 
 private:
     Ui::MainWidget *ui;
