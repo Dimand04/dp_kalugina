@@ -13,7 +13,7 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
 {
     ui->setupUi(this);
 
-    // 1. СИСТЕМНЫЕ ФУНКЦИИ И ВЫХОД
+    // --- 1. СИСТЕМНЫЕ ФУНКЦИИ И ВЫХОД ---
     adminFunction();
 
     QToolButton *logoutBtn = new QToolButton(this);
@@ -23,24 +23,22 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
 
     connect(logoutBtn, &QToolButton::clicked, this, &MainWidget::logout);
 
-    // 2. НАВИГАЦИЯ
+    // --- 2. ОБЩАЯ НАВИГАЦИЯ ---
     connect(ui->tabw_main, &QTabWidget::currentChanged, this, &MainWidget::tabw_main_change);
     connect(ui->tabw_administration, &QTabWidget::currentChanged, this, &MainWidget::tabw_administration_change);
 
-    // 3. АДМИНИСТРИРОВАНИЕ: ПОЛЬЗОВАТЕЛИ
+    // --- 3. АДМИНИСТРИРОВАНИЕ ---
     connect(ui->le_admin_users_search, &QLineEdit::textChanged, this, &MainWidget::filter_users);
     connect(ui->cb_admin_roles, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filter_users);
     connect(ui->tw_admin_users, &QTableWidget::cellClicked, this, &MainWidget::table_users_clicked);
     connect(ui->pb_admin_addUser, &QPushButton::clicked, this, &MainWidget::show_edit_user);
     connect(ui->pb_admin_editUser, &QPushButton::clicked, this, &MainWidget::show_edit_user);
 
-    // 4. АДМИНИСТРИРОВАНИЕ: РОЛИ
     connect(ui->le_admin_roles_search, &QLineEdit::textChanged, this, &MainWidget::filter_roles);
     connect(ui->tw_admin_roles, &QTableWidget::cellClicked, this, &MainWidget::table_roles_clicked);
     connect(ui->pb_admin_addRole, &QPushButton::clicked, this, &MainWidget::show_edit_role);
     connect(ui->pb_admin_editRole, &QPushButton::clicked, this, &MainWidget::show_edit_role);
 
-    // 5. АДМИНИСТРИРОВАНИЕ: СПРАВОЧНИКИ
     connect(ui->le_admin_categories_search, &QLineEdit::textChanged, this, &MainWidget::filter_categories);
     connect(ui->pb_admin_addCategory, &QPushButton::clicked, this, &MainWidget::show_edit_category);
     connect(ui->pb_admin_editCategory, &QPushButton::clicked, this, &MainWidget::show_edit_category);
@@ -56,32 +54,31 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->pb_admin_editSupplier, &QPushButton::clicked, this, &MainWidget::show_edit_supplier);
     connect(ui->tw_admin_suppliers, &QTableWidget::cellClicked, this, &MainWidget::table_suppliers_clicked);
 
-    // 6. СКЛАД
+    // --- 4. СКЛАД ---
     connect(ui->le_warehouse_materials_search, &QLineEdit::textChanged, this, &MainWidget::filter_warehouse);
     connect(ui->cb_warehouse_categories, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filter_warehouse);
     connect(ui->lb_change_layout, &QPushLabel::clicked, this, &MainWidget::toggleWarehouseLayout);
     connect(ui->tw_warehouse, &QTableWidget::cellClicked, this, &MainWidget::table_warehouseBatches_clicked);
 
-    // 7. ИНВЕНТАРИЗАЦИЯ
+    // --- 5. ИНВЕНТАРИЗАЦИЯ ---
+    ui->de_history_start->setCalendarPopup(true);
+    ui->de_history_end->setCalendarPopup(true);
+
     connect(ui->le_history_search, &QLineEdit::textChanged, this, &MainWidget::filter_inventory);
     connect(ui->de_history_start, &QDateEdit::dateChanged, this, &MainWidget::filter_inventory);
     connect(ui->de_history_end, &QDateEdit::dateChanged, this, &MainWidget::filter_inventory);
-
     connect(ui->cb_history_period, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::history_period_currentIndexChanged);
 
-    auto setCustomPeriod = [this](){
+    auto setCustomInvPeriod = [this](){
         if (ui->cb_history_period->currentIndex() != 4) {
             ui->cb_history_period->blockSignals(true);
             ui->cb_history_period->setCurrentIndex(4);
             ui->cb_history_period->blockSignals(false);
         }
     };
-    connect(ui->de_history_start, &QDateEdit::userDateChanged, this, setCustomPeriod);
-    connect(ui->de_history_end, &QDateEdit::userDateChanged, this, setCustomPeriod);
-
-    connect(ui->de_history_start, &QDateEdit::dateChanged, this, [this](QDate date){
-        ui->de_history_end->setMinimumDate(date);
-    });
+    connect(ui->de_history_start, &QDateEdit::userDateChanged, this, setCustomInvPeriod);
+    connect(ui->de_history_end, &QDateEdit::userDateChanged, this, setCustomInvPeriod);
+    connect(ui->de_history_start, &QDateEdit::dateChanged, this, [this](QDate date){ ui->de_history_end->setMinimumDate(date); });
 
     connect(ui->tw_inventory_history, &QTableWidget::cellClicked, this, &MainWidget::table_inventory_clicked);
     connect(ui->pb_inventoryDetailsBack, &QPushButton::clicked, this, &MainWidget::closeInventoryWorkArea);
@@ -89,7 +86,82 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->pb_inventory_cancel, &QPushButton::clicked, this, &MainWidget::inventory_cancel);
     connect(ui->pb_inventory_ok, &QPushButton::clicked, this, &MainWidget::saveInventory);
 
-    // 8. НАСТРОЙКА ЗАГОЛОВКОВ ТАБЛИЦ (UI)
+    // --- 6. ПОСТУПЛЕНИЯ УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ---
+    ui->de_incoming_start->setCalendarPopup(true);
+    ui->de_incoming_end->setCalendarPopup(true);
+    ui->de_new_incoming_date->setCalendarPopup(true);
+
+    connect(ui->le_incoming_search, &QLineEdit::textChanged, this, [this](){ filterDocs(Incoming); });
+    connect(ui->cb_incoming_filter_counterparty, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){ filterDocs(Incoming); });
+    connect(ui->de_incoming_start, &QDateEdit::dateChanged, this, [this](){ filterDocs(Incoming); });
+    connect(ui->de_incoming_end, &QDateEdit::dateChanged, this, [this](){ filterDocs(Incoming); });
+    connect(ui->cb_incoming_period, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){ updateDocPeriod(Incoming, index); });
+
+    auto setCustomIncPeriod = [this](){
+        if (ui->cb_incoming_period->currentIndex() != 4) {
+            ui->cb_incoming_period->blockSignals(true);
+            ui->cb_incoming_period->setCurrentIndex(4);
+            ui->cb_incoming_period->blockSignals(false);
+        }
+    };
+    connect(ui->de_incoming_start, &QDateEdit::userDateChanged, this, setCustomIncPeriod);
+    connect(ui->de_incoming_end, &QDateEdit::userDateChanged, this, setCustomIncPeriod);
+    connect(ui->de_incoming_start, &QDateEdit::dateChanged, this, [this](QDate d){ ui->de_incoming_end->setMinimumDate(d); });
+
+    connect(ui->tw_incoming_history, &QTableWidget::cellClicked, this, [this](int r){ handleDocClick(Incoming, r); });
+    connect(ui->pb_incoming_add, &QPushButton::clicked, this, [this](){ prepareDocEditor(Incoming); });
+    connect(ui->pb_new_incoming_cancel, &QPushButton::clicked, this, [this](){ cancelDocOperation(Incoming); });
+    connect(ui->pb_new_incoming_save, &QPushButton::clicked, this, &MainWidget::saveIncoming);
+
+    // Ввод данных в строку поступления
+    connect(ui->cb_inc_add_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){ handleMaterialSelectionChanged(Incoming); });
+    connect(ui->dsb_inc_add_qty, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](){ calculateCurrentRowSum(Incoming); });
+    connect(ui->dsb_inc_add_price, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](){ calculateCurrentRowSum(Incoming); });
+    connect(ui->pb_inc_add_row, &QPushButton::clicked, this, [this](){ addDocRow(Incoming); });
+    connect(ui->pb_inc_clear_fields, &QPushButton::clicked, this, [this](){ clearDocInputBar(Incoming); });
+    connect(ui->tw_incoming_editor, &QTableWidget::cellClicked, this, [this](int r){ deleteDocRow(Incoming, r); });
+    connect(ui->lb_change_layout_incoming, &QPushLabel::clicked, this, [this](){
+        toggleDocLayout(Incoming);
+    });
+
+    // --- 7. СПИСАНИЯ УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ---
+    ui->de_outgoing_start->setCalendarPopup(true);
+    ui->de_outgoing_end->setCalendarPopup(true);
+    ui->de_new_outgoing_date->setCalendarPopup(true);
+
+    connect(ui->le_outgoing_search, &QLineEdit::textChanged, this, [this](){ filterDocs(Outgoing); });
+    connect(ui->de_outgoing_start, &QDateEdit::dateChanged, this, [this](){ filterDocs(Outgoing); });
+    connect(ui->de_outgoing_end, &QDateEdit::dateChanged, this, [this](){ filterDocs(Outgoing); });
+    connect(ui->cb_outgoing_period, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){ updateDocPeriod(Outgoing, index); });
+
+    auto setCustomOutPeriod = [this](){
+        if (ui->cb_outgoing_period->currentIndex() != 4) {
+            ui->cb_outgoing_period->blockSignals(true);
+            ui->cb_outgoing_period->setCurrentIndex(4);
+            ui->cb_outgoing_period->blockSignals(false);
+        }
+    };
+    connect(ui->de_outgoing_start, &QDateEdit::userDateChanged, this, setCustomOutPeriod);
+    connect(ui->de_outgoing_end, &QDateEdit::userDateChanged, this, setCustomOutPeriod);
+    connect(ui->de_outgoing_start, &QDateEdit::dateChanged, this, [this](QDate d){ ui->de_outgoing_end->setMinimumDate(d); });
+
+    connect(ui->tw_outgoing_history, &QTableWidget::cellClicked, this, [this](int r){ handleDocClick(Outgoing, r); });
+    connect(ui->pb_outgoing_add, &QPushButton::clicked, this, [this](){ prepareDocEditor(Outgoing); });
+    connect(ui->pb_new_outgoing_cancel, &QPushButton::clicked, this, [this](){ cancelDocOperation(Outgoing); });
+    connect(ui->pb_new_outgoing_save, &QPushButton::clicked, this, &MainWidget::saveOutgoing);
+
+    // Ввод данных в строку списания
+    connect(ui->cb_out_add_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){ handleMaterialSelectionChanged(Outgoing); });
+    connect(ui->dsb_out_add_qty, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](){ calculateCurrentRowSum(Outgoing); });
+    connect(ui->dsb_out_add_price, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](){ calculateCurrentRowSum(Outgoing); });
+    connect(ui->pb_out_add_row, &QPushButton::clicked, this, [this](){ addDocRow(Outgoing); });
+    connect(ui->pb_out_clear_fields, &QPushButton::clicked, this, [this](){ clearDocInputBar(Outgoing); });
+    connect(ui->tw_outgoing_editor, &QTableWidget::cellClicked, this, [this](int r){ deleteDocRow(Outgoing, r); });
+    connect(ui->lb_change_layout_outgoing, &QPushLabel::clicked, this, [this](){
+        toggleDocLayout(Outgoing);
+    });
+
+    // --- 8. НАСТРОЙКА ГЕОМЕТРИИ И ФИЛЬТРОВ СОБЫТИЙ ---
     auto setupHeader = [](QTableWidget* tw) {
         tw->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         tw->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
@@ -102,60 +174,15 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     setupHeader(ui->tw_admin_categories);
     setupHeader(ui->tw_admin_materials);
     setupHeader(ui->tw_admin_suppliers);
-
     ui->tw_warehouse->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
 
-    QHeaderView *header = ui->tw_inventoryDetails->horizontalHeader();
+    // Event Filters для полей ввода (selectAll при клике)
+    ui->dsb_inc_add_qty->installEventFilter(this);
+    ui->dsb_inc_add_price->installEventFilter(this);
+    ui->dsb_out_add_qty->installEventFilter(this);
+    ui->dsb_out_add_price->installEventFilter(this);
 
-    header->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(5, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(6, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(7, QHeaderView::ResizeToContents);
-
-    header->setSectionResizeMode(4, QHeaderView::Stretch);
-    header->setSectionResizeMode(8, QHeaderView::Stretch);
-
-    // 9. ПОСТУПЛЕНИЯ
-    connect(ui->le_incoming_search, &QLineEdit::textChanged, this, &MainWidget::filter_incoming);
-    connect(ui->de_incoming_start, &QDateEdit::dateChanged, this, &MainWidget::filter_incoming);
-    connect(ui->de_incoming_end, &QDateEdit::dateChanged, this, &MainWidget::filter_incoming);
-    connect(ui->cb_incoming_filter_supplier, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filter_incoming);
-
-    connect(ui->cb_incoming_period, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::incoming_period_currentIndexChanged);
-
-    auto setCustomIncomingPeriod = [this](){
-        if (ui->cb_incoming_period->currentIndex() != 4) {
-            ui->cb_incoming_period->blockSignals(true);
-            ui->cb_incoming_period->setCurrentIndex(4);
-            ui->cb_incoming_period->blockSignals(false);
-        }
-    };
-    connect(ui->de_incoming_start, &QDateEdit::userDateChanged, this, setCustomIncomingPeriod);
-    connect(ui->de_incoming_end, &QDateEdit::userDateChanged, this, setCustomIncomingPeriod);
-
-    connect(ui->de_incoming_start, &QDateEdit::dateChanged, this, [this](QDate date){
-        ui->de_incoming_end->setMinimumDate(date);
-    });
-
-    connect(ui->lb_change_layout_2, &QPushLabel::clicked, this, &MainWidget::toggleIncomingLayout);
-    connect(ui->tw_incoming_history, &QTableWidget::cellClicked, this, &MainWidget::table_incoming_clicked);
-    connect(ui->pb_incoming_add, &QPushButton::clicked, this, &MainWidget::showIncoming);
-    connect(ui->pb_new_incoming_cancel, &QPushButton::clicked, this, &MainWidget::incoming_cancel);
-    connect(ui->cb_inc_add_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::on_cb_inc_add_material_currentIndexChanged);
-    connect(ui->dsb_inc_add_qty, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWidget::calculateCurrentRowSum);
-    connect(ui->dsb_inc_add_price, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWidget::calculateCurrentRowSum);
-    connect(ui->pb_inc_add_row, &QPushButton::clicked, this, &MainWidget::insertIncomingRow);
-    connect(ui->pb_inc_clear_fields, &QPushButton::clicked, this, &MainWidget::clearIncomingInputBar);
-    connect(ui->tw_incoming_editor, &QTableWidget::cellClicked, this, [this](int row, int column){
-        Q_UNUSED(column);
-        deleteIncomingRow(row);
-    });
-    connect(ui->pb_new_incoming_save, &QPushButton::clicked, this, &MainWidget::saveIncoming);
-
-    // НАЧАЛЬНОЕ СОСТОЯНИЕ
+    // --- 9. НАЧАЛЬНОЕ СОСТОЯНИЕ ---
     ui->tabw_main->setCurrentIndex(0);
     ui->tabw_administration->setCurrentIndex(0);
     tabw_incoming_change();
@@ -210,6 +237,9 @@ void MainWidget::tabw_main_change(int index)
 {
     if(index == 0) {
         tabw_incoming_change();
+    }
+    else if(index == 1) {
+        tabw_outgoing_change();
     }
     else if(index == 2) {
         tabw_warehouse_change();
@@ -268,7 +298,7 @@ void MainWidget::tabw_incoming_change()
 {
     if (m_isFirstIncomingOpen) {
         ui->splitter_2->setOrientation(Qt::Vertical);
-        ui->lb_change_layout_2->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
+        ui->lb_change_layout_incoming->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
         ui->splitter_2->setSizes({1, 0});
 
         m_isIncomingDetailsOpened = false;
@@ -281,10 +311,33 @@ void MainWidget::tabw_incoming_change()
     }
 
     loadIncomingSuppliers();
-    loadIncomingHistoryTable();
+    loadHistoryTable(Incoming);
 
     if (currentIncomingId != 0) {
-        loadIncomingDetails();
+        loadDocDetails(Incoming);
+    }
+}
+
+void MainWidget::tabw_outgoing_change()
+{
+    if (m_isFirstOutgoingOpen) {
+        ui->splitter_3->setOrientation(Qt::Vertical);
+        ui->lb_change_layout_outgoing->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
+        ui->splitter_3->setSizes({1, 0});
+
+        m_isOutgoingDetailsOpened = false;
+        currentOutgoingId = 0;
+
+        ui->cb_outgoing_period->setCurrentIndex(-1);
+        ui->cb_outgoing_period->setCurrentIndex(0);
+
+        m_isFirstOutgoingOpen = false;
+    }
+
+    loadHistoryTable(Outgoing);
+
+    if (currentOutgoingId != 0) {
+        loadDocDetails(Outgoing);
     }
 }
 
@@ -870,12 +923,7 @@ void MainWidget::loadWarehouseMovementsTable()
     QSqlQuery query(db);
 
     QString sql =
-        "SELECT "
-        "  d.doc_date, "
-        "  d.doc_type, "
-        "  d.id AS doc_id, "
-        "  it.quantity, "
-        "  u.login "
+        "SELECT d.doc_date, d.doc_type, d.id, it.quantity, u.login "
         "FROM inventory_transactions it "
         "JOIN documents d ON it.document_id = d.id "
         "JOIN users u ON d.user_id = u.id "
@@ -908,11 +956,17 @@ void MainWidget::loadWarehouseMovementsTable()
                 displayType = "Приход";
                 rowColor = QColor(200, 245, 200);
                 runningBalance += qty;
-            } else {
+            }
+            else if (typeStr == "outgoing") {
                 displayType = "Расход";
                 rowColor = QColor(255, 210, 210);
-                runningBalance -= qty;
-                qty = -qty;
+                runningBalance -= qAbs(qty);
+                qty = -qAbs(qty);
+            }
+            else if (typeStr == "inventory") {
+                displayType = "Инвентар.";
+                runningBalance += qty;
+                rowColor = (qty >= 0) ? QColor(240, 240, 240) : QColor(255, 235, 235);
             }
 
             QTableWidgetItem *itemDate    = new QTableWidgetItem(dateTime.toString("dd.MM.yy HH:mm"));
@@ -924,15 +978,13 @@ void MainWidget::loadWarehouseMovementsTable()
 
             itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             itemBalance->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemBalance->setFont(QFont("Segoe UI", -1, QFont::Bold));
 
             QList<QTableWidgetItem*> allItems = {itemDate, itemType, itemDoc, itemQty, itemBalance, itemUser};
-
-            for (int col = 0; col < allItems.size(); ++col) {
-                QTableWidgetItem *item = allItems.at(col);
+            for (auto item : allItems) {
                 item->setBackground(rowColor);
-                ui->tw_warehouse_movements->setItem(row, col, item);
+                ui->tw_warehouse_movements->setItem(row, allItems.indexOf(item), item);
             }
-
             row++;
         }
         ui->tw_warehouse_movements->setSortingEnabled(true);
@@ -1493,33 +1545,37 @@ void MainWidget::saveInventory()
 
 void MainWidget::loadIncomingSuppliers()
 {
-    ui->cb_incoming_filter_supplier->clear();
-    ui->cb_incoming_filter_supplier->addItem("Все поставщики", 0);
+    ui->cb_incoming_filter_counterparty->clear();
+    ui->cb_incoming_filter_counterparty->addItem("Все поставщики", 0);
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
     QSqlQuery query(db);
 
     if (query.exec("SELECT id, name FROM suppliers ORDER BY name")) {
         while (query.next()) {
-            ui->cb_incoming_filter_supplier->addItem(query.value(1).toString(), query.value(0).toInt());
+            ui->cb_incoming_filter_counterparty->addItem(query.value(1).toString(), query.value(0).toInt());
         }
     }
 }
 
-void MainWidget::incoming_period_currentIndexChanged(int index)
+void MainWidget::updateDocPeriod(DocMode mode, int index)
 {
+    QDateEdit *deStart = (mode == Incoming) ? ui->de_incoming_start : ui->de_outgoing_start;
+    QDateEdit *deEnd   = (mode == Incoming) ? ui->de_incoming_end   : ui->de_outgoing_end;
+    QString docType    = (mode == Incoming) ? "incoming"            : "outgoing";
+
     QDate today = QDate::currentDate();
     QDate start;
     QDate end = today;
 
-    ui->de_incoming_start->blockSignals(true);
-    ui->de_incoming_end->blockSignals(true);
+    deStart->blockSignals(true);
+    deEnd->blockSignals(true);
 
-    ui->de_incoming_start->setMaximumDate(QDate(9999, 1, 1));
-    ui->de_incoming_end->setMinimumDate(QDate(1900, 1, 1));
+    deStart->setMaximumDate(QDate(9999, 1, 1));
+    deEnd->setMinimumDate(QDate(1900, 1, 1));
 
     switch (index) {
     case 0:
-        start = getEarliestIncomingDate();
+        start = getEarliestDocDate(docType);
         break;
     case 1:
         start = today.addDays(-(today.dayOfWeek() - 1));
@@ -1531,55 +1587,62 @@ void MainWidget::incoming_period_currentIndexChanged(int index)
         start = QDate(today.year(), 1, 1);
         break;
     case 4:
-        ui->de_incoming_start->blockSignals(false);
-        ui->de_incoming_end->blockSignals(false);
+        deStart->blockSignals(false);
+        deEnd->blockSignals(false);
         return;
     }
 
-    ui->de_incoming_end->setDate(end);
-    ui->de_incoming_start->setDate(start);
+    deEnd->setDate(end);
+    deStart->setDate(start);
 
-    ui->de_incoming_end->setMinimumDate(start);
-    ui->de_incoming_start->setMaximumDate(end);
+    deEnd->setMinimumDate(start);
+    deStart->setMaximumDate(end);
 
-    ui->de_incoming_start->blockSignals(false);
-    ui->de_incoming_end->blockSignals(false);
+    deStart->blockSignals(false);
+    deEnd->blockSignals(false);
 
-    filter_incoming();
+    filterDocs(mode);
 }
 
-QDate MainWidget::getEarliestIncomingDate()
+QDate MainWidget::getEarliestDocDate(QString type)
 {
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
     QSqlQuery query(db);
 
-    query.exec("SELECT MIN(doc_date) FROM documents WHERE doc_type = 'incoming'");
+    query.prepare("SELECT MIN(doc_date) FROM documents WHERE doc_type = :type");
+    query.bindValue(":type", type);
 
-    if (query.next() && !query.value(0).isNull()) {
+    if (query.exec() && query.next() && !query.value(0).isNull()) {
         return query.value(0).toDateTime().date();
     }
 
-    return QDate::currentDate().addYears(-3);
+    return QDate::currentDate().addYears(-1);
 }
 
-void MainWidget::filter_incoming()
+void MainWidget::filterDocs(DocMode mode)
 {
-    QString searchText = ui->le_incoming_search->text().trimmed();
-    QDate startDate = ui->de_incoming_start->date();
-    QDate endDate = ui->de_incoming_end->date();
+    DocUI d = getDocUI(mode);
 
-    QString selectedSupplierText = ui->cb_incoming_filter_supplier->currentText();
-    int selectedSupplierId = ui->cb_incoming_filter_supplier->currentData().toInt();
+    QString searchText = d.searchLe->text().trimmed();
+    QDate startDate = d.deStart->date();
+    QDate endDate = d.deEnd->date();
 
-    for (int row = 0; row < ui->tw_incoming_history->rowCount(); ++row) {
-        QTableWidgetItem *itemNo = ui->tw_incoming_history->item(row, 0);
-        QTableWidgetItem *itemDate = ui->tw_incoming_history->item(row, 1);
-        QTableWidgetItem *itemSup = ui->tw_incoming_history->item(row, 2);
-        QTableWidgetItem *itemStaff = ui->tw_incoming_history->item(row, 4);
+    QString selectedCpText = "";
+    int selectedCpId = 0;
+    if (d.counterpartyFilterCb) {
+        selectedCpId = d.counterpartyFilterCb->currentData().toInt();
+        selectedCpText = d.counterpartyFilterCb->currentText();
+    }
 
-        QString idText = itemNo ? itemNo->text() : "";
-        QString dateText = itemDate ? itemDate->text() : "";
-        QString supText = itemSup ? itemSup->text() : "";
+    for (int row = 0; row < d.historyTable->rowCount(); ++row) {
+        QTableWidgetItem *itemNo    = d.historyTable->item(row, 0);
+        QTableWidgetItem *itemDate  = d.historyTable->item(row, 1);
+        QTableWidgetItem *itemCp    = d.historyTable->item(row, 2);
+        QTableWidgetItem *itemStaff = d.historyTable->item(row, 4);
+
+        QString idText    = itemNo ? itemNo->text() : "";
+        QString dateText  = itemDate ? itemDate->text() : "";
+        QString cpText    = itemCp ? itemCp->text() : "";
         QString staffText = itemStaff ? itemStaff->text() : "";
 
         bool textMatch = idText.contains(searchText, Qt::CaseInsensitive) ||
@@ -1588,15 +1651,35 @@ void MainWidget::filter_incoming()
         QDate rowDate = QDate::fromString(dateText.left(10), "dd.MM.yyyy");
         bool dateMatch = (rowDate >= startDate && rowDate <= endDate);
 
-        bool supplierMatch = (selectedSupplierId == 0) || (supText == selectedSupplierText);
+        bool cpMatch = true;
+        if (d.counterpartyFilterCb) {
+            cpMatch = (selectedCpId == 0) || (cpText == selectedCpText);
+        }
 
-        ui->tw_incoming_history->setRowHidden(row, !(textMatch && dateMatch && supplierMatch));
+        d.historyTable->setRowHidden(row, !(textMatch && dateMatch && cpMatch));
     }
 }
 
-void MainWidget::loadIncomingHistoryTable()
+void MainWidget::loadHistoryTable(DocMode mode)
 {
-    QHeaderView *header = ui->tw_incoming_history->horizontalHeader();
+    QTableWidget *table;
+    int *currentId;
+    QString typeStr;
+    QColor sumColor;
+
+    if (mode == Incoming) {
+        table = ui->tw_incoming_history;
+        currentId = &currentIncomingId;
+        typeStr = "incoming";
+        sumColor = QColor(0, 100, 0);
+    } else {
+        table = ui->tw_outgoing_history;
+        currentId = &currentOutgoingId;
+        typeStr = "outgoing";
+        sumColor = QColor(150, 0, 0);
+    }
+
+    QHeaderView *header = table->horizontalHeader();
     header->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     header->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     header->setSectionResizeMode(2, QHeaderView::Stretch);
@@ -1613,7 +1696,7 @@ void MainWidget::loadIncomingHistoryTable()
         "SELECT "
         "  d.id, "
         "  d.doc_date, "
-        "  MAX(s.name) AS supplier_name, "
+        "  MAX(s.name) AS counterparty_name, "
         "  SUM(it.quantity * it.price) AS total_sum, "
         "  u.login, "
         "  d.description "
@@ -1622,21 +1705,24 @@ void MainWidget::loadIncomingHistoryTable()
         "LEFT JOIN inventory_transactions it ON d.id = it.document_id "
         "LEFT JOIN batches b ON it.batch_id = b.id "
         "LEFT JOIN suppliers s ON b.supplier_id = s.id "
-        "WHERE d.doc_type = 'incoming' "
+        "WHERE d.doc_type = :type "
         "GROUP BY d.id, d.doc_date, u.login, d.description "
         "ORDER BY d.doc_date DESC";
 
-    if (query.exec(sql)) {
-        ui->tw_incoming_history->setRowCount(0);
-        ui->tw_incoming_history->setSortingEnabled(false);
+    query.prepare(sql);
+    query.bindValue(":type", typeStr);
+
+    if (query.exec()) {
+        table->setRowCount(0);
+        table->setSortingEnabled(false);
 
         int row = 0;
         while (query.next()) {
-            ui->tw_incoming_history->insertRow(row);
+            table->insertRow(row);
 
             int docId = query.value(0).toInt();
             QDateTime date = query.value(1).toDateTime();
-            QString supplier = query.value(2).toString();
+            QString cpName = query.value(2).toString();
             double totalSum = query.value(3).toDouble();
             QString employee = query.value(4).toString();
             QString desc = query.value(5).toString();
@@ -1645,68 +1731,82 @@ void MainWidget::loadIncomingHistoryTable()
             itemNo->setData(Qt::UserRole, docId);
 
             QTableWidgetItem *itemDate = new QTableWidgetItem(date.toString("dd.MM.yyyy HH:mm"));
-            QTableWidgetItem *itemSup  = new QTableWidgetItem(supplier.isEmpty() ? "-" : supplier);
+            QTableWidgetItem *itemCp   = new QTableWidgetItem(cpName.isEmpty() ? "-" : cpName);
 
-            QTableWidgetItem *itemSum  = new QTableWidgetItem(QString::number(totalSum, 'f', 2));
+            QTableWidgetItem *itemSum  = new QTableWidgetItem(QString::number(qAbs(totalSum), 'f', 2));
             itemSum->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            itemSum->setForeground(QColor(0, 100, 0));
+            itemSum->setForeground(sumColor);
 
             QTableWidgetItem *itemUser = new QTableWidgetItem(employee);
             QTableWidgetItem *itemDesc = new QTableWidgetItem(desc);
 
-            ui->tw_incoming_history->setItem(row, 0, itemNo);
-            ui->tw_incoming_history->setItem(row, 1, itemDate);
-            ui->tw_incoming_history->setItem(row, 2, itemSup);
-            ui->tw_incoming_history->setItem(row, 3, itemSum);
-            ui->tw_incoming_history->setItem(row, 4, itemUser);
-            ui->tw_incoming_history->setItem(row, 5, itemDesc);
+            table->setItem(row, 0, itemNo);
+            table->setItem(row, 1, itemDate);
+            table->setItem(row, 2, itemCp);
+            table->setItem(row, 3, itemSum);
+            table->setItem(row, 4, itemUser);
+            table->setItem(row, 5, itemDesc);
 
             row++;
         }
-        ui->tw_incoming_history->setSortingEnabled(true);
+        table->setSortingEnabled(true);
 
-        if (currentIncomingId != 0) {
-            for (int row = 0; row < ui->tw_incoming_history->rowCount(); ++row) {
-                if (ui->tw_incoming_history->item(row, 0)->data(Qt::UserRole).toInt() == currentIncomingId) {
-                    ui->tw_incoming_history->selectRow(row);
+        if (*currentId != 0) {
+            for (int r = 0; r < table->rowCount(); ++r) {
+                if (table->item(r, 0)->data(Qt::UserRole).toInt() == *currentId) {
+                    table->selectRow(r);
                     break;
                 }
             }
         }
     } else {
-        qCritical() << "Ошибка загрузки журнала поступлений:" << query.lastError().text();
+        qCritical() << "Ошибка загрузки истории:" << query.lastError().text();
     }
 }
 
-void MainWidget::toggleIncomingLayout()
+void MainWidget::toggleDocLayout(DocMode mode)
 {
-    if (ui->splitter_2->orientation() == Qt::Horizontal) {
-        ui->splitter_2->setOrientation(Qt::Vertical);
-        ui->lb_change_layout_2->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
+    QSplitter *splitter = (mode == Incoming) ? ui->splitter_2 : ui->splitter_3;
+    QPushLabel *label   = (mode == Incoming) ? ui->lb_change_layout_incoming : ui->lb_change_layout_outgoing;
+
+    if (splitter->orientation() == Qt::Horizontal) {
+        splitter->setOrientation(Qt::Vertical);
+        label->setPixmap(QPixmap(":/res/edithlayoutsplit.png"));
     } else {
-        ui->splitter_2->setOrientation(Qt::Horizontal);
-        ui->lb_change_layout_2->setPixmap(QPixmap(":/res/editvlayoutsplit.png"));
+        splitter->setOrientation(Qt::Horizontal);
+        label->setPixmap(QPixmap(":/res/editvlayoutsplit.png"));
     }
 }
 
-void MainWidget::table_incoming_clicked(int row)
+void MainWidget::handleDocClick(DocMode mode, int row)
 {
-    currentIncomingId = 0;
-    QTableWidgetItem *item = ui->tw_incoming_history->item(row, 0);
-    if (item) {
-        currentIncomingId = item->data(Qt::UserRole).toInt();
+    QTableWidget *historyTable = (mode == Incoming) ? ui->tw_incoming_history : ui->tw_outgoing_history;
+    QSplitter *splitter        = (mode == Incoming) ? ui->splitter_2 : ui->splitter_3;
+    int *currentId             = (mode == Incoming) ? &currentIncomingId : &currentOutgoingId;
 
-        if (ui->splitter_2->sizes().at(1) == 0) {
-            ui->splitter_2->setSizes({1, 1});
+    QTableWidgetItem *item = historyTable->item(row, 0);
+    if (item) {
+        *currentId = item->data(Qt::UserRole).toInt();
+
+        if (splitter->sizes().at(1) == 0) {
+            splitter->setSizes({1, 1});
         }
 
-        loadIncomingDetails();
+        qDebug() << (mode == Incoming ? "Приход" : "Расход") << " ID:" << *currentId;
+
+        loadDocDetails(mode);
     }
 }
 
-void MainWidget::loadIncomingDetails()
+void MainWidget::loadDocDetails(DocMode mode)
 {
-    ui->tw_incoming_details->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    QTableWidget *detailsTable = (mode == Incoming) ? ui->tw_incoming_details : ui->tw_outgoing_details;
+    int docId                  = (mode == Incoming) ? currentIncomingId : currentOutgoingId;
+    QColor sumColor            = (mode == Incoming) ? QColor(0, 120, 0) : QColor(180, 0, 0);
+
+    if (docId <= 0) return;
+
+    detailsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
     if (!db.isValid() || !db.isOpen()) return;
@@ -1715,14 +1815,9 @@ void MainWidget::loadIncomingDetails()
 
     QString sql =
         "SELECT "
-        "  c.name AS category_name, "
-        "  m.name AS material_name, "
-        "  it.quantity, "
-        "  u.name AS unit_name, "
-        "  it.price, "
-        "  (it.quantity * it.price) AS row_sum, "
-        "  it.batch_id, "
-        "  m.id "
+        "  c.name AS category_name, m.name AS material_name, it.quantity, "
+        "  u.name AS unit_name, it.price, (it.quantity * it.price) AS row_sum, "
+        "  it.batch_id, m.id "
         "FROM inventory_transactions it "
         "JOIN materials m ON it.material_id = m.id "
         "JOIN categories c ON m.category_id = c.id "
@@ -1730,34 +1825,31 @@ void MainWidget::loadIncomingDetails()
         "WHERE it.document_id = :docId";
 
     query.prepare(sql);
-    query.bindValue(":docId", currentIncomingId);
+    query.bindValue(":docId", docId);
 
     if (query.exec()) {
-        ui->tw_incoming_details->setRowCount(0);
-        ui->tw_incoming_details->setSortingEnabled(false);
+        detailsTable->setRowCount(0);
+        detailsTable->setSortingEnabled(false);
         int row = 0;
 
         while (query.next()) {
-            ui->tw_incoming_details->insertRow(row);
+            detailsTable->insertRow(row);
 
             QString category = query.value(0).toString();
             QString material = query.value(1).toString();
-            double quantity  = query.value(2).toDouble();
+            double quantity  = qAbs(query.value(2).toDouble());
             QString unit     = query.value(3).toString();
             double price     = query.value(4).toDouble();
-            double sum       = query.value(5).toDouble();
+            double sum       = qAbs(query.value(5).toDouble());
             int batchId      = query.value(6).toInt();
             int materialId   = query.value(7).toInt();
 
             QTableWidgetItem *itemCat   = new QTableWidgetItem(category);
             QTableWidgetItem *itemMat   = new QTableWidgetItem(material);
             QTableWidgetItem *itemUnit  = new QTableWidgetItem(unit);
-
             QTableWidgetItem *itemQty   = new QTableWidgetItem(QString::number(quantity, 'f', 3));
-
             QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
             QTableWidgetItem *itemSum   = new QTableWidgetItem(QString::number(sum, 'f', 2));
-
             QTableWidgetItem *itemBatch = new QTableWidgetItem(QString::number(batchId));
 
             itemCat->setData(Qt::UserRole, materialId);
@@ -1767,73 +1859,102 @@ void MainWidget::loadIncomingDetails()
                 item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             }
 
-            itemSum->setForeground(QColor(0, 120, 0));
+            itemSum->setForeground(sumColor);
             itemSum->setFont(QFont("Segoe UI", -1, QFont::Bold));
 
-            ui->tw_incoming_details->setEditTriggers(QAbstractItemView::NoEditTriggers);
+            detailsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-            ui->tw_incoming_details->setItem(row, 0, itemCat);
-            ui->tw_incoming_details->setItem(row, 1, itemMat);
-            ui->tw_incoming_details->setItem(row, 2, itemQty);
-            ui->tw_incoming_details->setItem(row, 3, itemUnit);
-            ui->tw_incoming_details->setItem(row, 4, itemPrice);
-            ui->tw_incoming_details->setItem(row, 5, itemSum);
-            ui->tw_incoming_details->setItem(row, 6, itemBatch);
+            detailsTable->setItem(row, 0, itemCat);
+            detailsTable->setItem(row, 1, itemMat);
+            detailsTable->setItem(row, 2, itemQty);
+            detailsTable->setItem(row, 3, itemUnit);
+            detailsTable->setItem(row, 4, itemPrice);
+            detailsTable->setItem(row, 5, itemSum);
+            detailsTable->setItem(row, 6, itemBatch);
 
             row++;
         }
-        ui->tw_incoming_details->setSortingEnabled(true);
-    } else {
-        qCritical() << "Ошибка загрузки состава поступления:" << query.lastError().text();
+        detailsTable->setSortingEnabled(true);
     }
 }
 
-void MainWidget::showIncoming()
+void MainWidget::prepareDocEditor(DocMode mode)
 {
-    ui->sw_incoming->setCurrentIndex(1);
-    ui->lb_new_incoming_total_value->setText("0.00");
+    QStackedWidget *stack;
+    QLabel *totalLb;
+    QDateEdit *dateDe;
+    QTableWidget *table;
+    QLineEdit *descLe;
 
-    loadAddIncomingSuppliers();
-    loadAddIncomingMaterials();
-    ui->de_new_incoming_date->setDate(QDate::currentDate());
+    if (mode == Incoming) {
+        stack   = ui->sw_incoming;
+        totalLb = ui->lb_new_incoming_total_value;
+        dateDe  = ui->de_new_incoming_date;
+        table   = ui->tw_incoming_editor;
+        descLe  = ui->le_new_incoming_description;
 
-    ui->tw_incoming_editor->setRowCount(0);
+        loadAddIncomingSuppliers();
+    } else {
+        stack   = ui->sw_outgoing;
+        totalLb = ui->lb_new_outgoing_total_value;
+        dateDe  = ui->de_new_outgoing_date;
+        table   = ui->tw_outgoing_editor;
+        descLe  = ui->le_new_outgoing_description;
+    }
 
-    ui->tw_incoming_editor->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tw_incoming_editor->horizontalHeader()->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+    stack->setCurrentIndex(1);
+    totalLb->setText("0.00");
+    totalLb->setStyleSheet("color: black; font-size: 13pt;");
+    dateDe->setDate(QDate::currentDate());
+    descLe->clear();
+    table->setRowCount(0);
+
+    table->setColumnCount(6);
+    table->setHorizontalHeaderLabels({
+        "Материал", "Категория", "Кол-во", "Ед. изм.", "Цена", "Сумма"
+    });
+
+    QHeaderView *header = table->horizontalHeader();
+    header->setSectionResizeMode(0, QHeaderView::Stretch);
+    header->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+
+    loadAddDocMaterials(mode);
 
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
-    if (!db.isOpen()) {
-        qCritical() << "Ошибка: база данных не открыта в showIncoming!";
-        return;
-    }
-
-    m_materialsCache.clear();
-    QSqlQuery q(db);
-    QString sql = "SELECT m.id, c.name, u.name FROM materials m "
-                  "JOIN categories c ON m.category_id = c.id "
-                  "JOIN units u ON m.unit_id = u.id";
-    if (q.exec(sql)) {
-        while(q.next()) {
-            MaterialEntry entry;
-            entry.id = q.value(0).toInt();
-            entry.category = q.value(1).toString();
-            entry.unit = q.value(2).toString();
-            m_materialsCache.insert(entry.id, entry);
+    if (db.isOpen()) {
+        m_materialsCache.clear();
+        QSqlQuery q(db);
+        QString sql = "SELECT m.id, c.name, u.name FROM materials m "
+                      "JOIN categories c ON m.category_id = c.id "
+                      "JOIN units u ON m.unit_id = u.id";
+        if (q.exec(sql)) {
+            while(q.next()) {
+                MaterialEntry entry;
+                entry.id = q.value(0).toInt();
+                entry.category = q.value(1).toString();
+                entry.unit = q.value(2).toString();
+                m_materialsCache.insert(entry.id, entry);
+            }
         }
-        qDebug() << "Кэш материалов загружен. Записей:" << m_materialsCache.size();
-    } else {
-        qCritical() << "Ошибка загрузки кэша:" << q.lastError().text();
     }
+    clearDocInputBar(mode);
 }
 
-void MainWidget::incoming_cancel()
+void MainWidget::cancelDocOperation(DocMode mode)
 {
+    QString title = (mode == Incoming) ? "Отмена поступления" : "Отмена списания";
+    QString text = (mode == Incoming)
+                       ? "Вы действительно хотите прервать проведение поступления?\nВсе позиции будут удалены без сохранения."
+                       : "Вы действительно хотите прервать оформление списания?\nВсе позиции будут удалены без сохранения.";
+
     QMessageBox msgBox(
         QMessageBox::Question,
-        "Отмена поступления",
-        "Вы действительно хотите прервать проведение поступления?\n"
-        "Все позиции будут удалены без сохранения.",
+        title,
+        text,
         QMessageBox::Yes | QMessageBox::No,
         this
         );
@@ -1842,22 +1963,28 @@ void MainWidget::incoming_cancel()
     msgBox.setButtonText(QMessageBox::No, "Нет, продолжить");
 
     if (msgBox.exec() == QMessageBox::Yes) {
-        closeIncomingWorkArea();
-        qDebug() << "Поступление отменено.";
+        closeDocWorkArea(mode);
+        qDebug() << title << "подтверждена пользователем.";
     }
 }
 
-void MainWidget::closeIncomingWorkArea()
+void MainWidget::closeDocWorkArea(DocMode mode)
 {
-    currentIncomingId = 0;
+    if (mode == Incoming) {
+        currentIncomingId = 0;
+        ui->sw_incoming->setCurrentIndex(0);
+        ui->tw_incoming_details->setRowCount(0);
+        ui->splitter_2->setSizes({1, 0});
+        m_isIncomingDetailsOpened = false;
+    } else {
+        currentOutgoingId = 0;
+        ui->sw_outgoing->setCurrentIndex(0);
+        ui->tw_outgoing_details->setRowCount(0);
+        ui->splitter_3->setSizes({1, 0});
+        m_isOutgoingDetailsOpened = false;
+    }
 
-    ui->sw_incoming->setCurrentIndex(0);
-    ui->tw_incoming_details->setRowCount(0);
-    ui->splitter_2->setSizes({1, 0});
-
-    m_isIncomingDetailsOpened = false;
-
-    loadIncomingHistoryTable();
+    loadHistoryTable(mode);
 }
 
 void MainWidget::loadAddIncomingSuppliers()
@@ -1878,11 +2005,12 @@ void MainWidget::loadAddIncomingSuppliers()
     ui->cb_new_incoming_supplier->setCurrentIndex(0);
 }
 
-void MainWidget::loadAddIncomingMaterials()
+void MainWidget::loadAddDocMaterials(DocMode mode)
 {
-    ui->cb_inc_add_material->clear();
+    QComboBox *cb = (mode == Incoming) ? ui->cb_inc_add_material : ui->cb_out_add_material;
 
-    ui->cb_inc_add_material->addItem("Выберите материал", 0);
+    cb->clear();
+    cb->addItem("Выберите материал", 0);
 
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
     if (!db.isValid() || !db.isOpen()) return;
@@ -1890,129 +2018,171 @@ void MainWidget::loadAddIncomingMaterials()
     QSqlQuery query(db);
     if (query.exec("SELECT id, name FROM materials ORDER BY name")) {
         while (query.next()) {
-            ui->cb_inc_add_material->addItem(query.value(1).toString(), query.value(0).toInt());
+            cb->addItem(query.value(1).toString(), query.value(0).toInt());
         }
     }
-    ui->cb_inc_add_material->setCurrentIndex(0);
+    cb->setCurrentIndex(0);
 }
 
-void MainWidget::on_cb_inc_add_material_currentIndexChanged(int index)
+void MainWidget::handleMaterialSelectionChanged(DocMode mode)
 {
-    int materialId = ui->cb_inc_add_material->currentData().toInt();
+    QComboBox *cb       = (mode == Incoming) ? ui->cb_inc_add_material : ui->cb_out_add_material;
+    QLineEdit *leCat    = (mode == Incoming) ? ui->le_inc_add_category : ui->le_out_add_category;
+    QLineEdit *leUnit   = (mode == Incoming) ? ui->le_inc_add_unit     : ui->le_out_add_unit;
+    QDoubleSpinBox *sbQty = (mode == Incoming) ? ui->dsb_inc_add_qty   : ui->dsb_out_add_qty;
+    QDoubleSpinBox *sbPrice = (mode == Incoming) ? ui->dsb_inc_add_price : ui->dsb_out_add_price;
+    QLineEdit *leSum    = (mode == Incoming) ? ui->le_inc_add_sum      : ui->le_out_add_sum;
+
+    int materialId = cb->currentData().toInt();
 
     if (materialId <= 0) {
-        ui->le_inc_add_category->clear();
-        ui->le_inc_add_unit->clear();
-        ui->dsb_inc_add_qty->setValue(0);
-        ui->dsb_inc_add_price->setValue(0);
-        ui->le_inc_add_sum->setText("0.00");
+        leCat->clear(); leUnit->clear();
+        sbQty->setValue(0); sbPrice->setValue(0);
+        leSum->setText("0.00");
+        if (mode == Outgoing) ui->lb_out_available_qty->clear();
         return;
     }
 
     if (m_materialsCache.contains(materialId)) {
         MaterialEntry entry = m_materialsCache.value(materialId);
+        leCat->setText(entry.category);
+        leUnit->setText(entry.unit);
+        sbQty->setValue(1.000);
 
-        ui->le_inc_add_category->setText(entry.category);
-        ui->le_inc_add_unit->setText(entry.unit);
+        if (mode == Outgoing) {
+            double stock = getAvailableStock(materialId);
 
-        ui->dsb_inc_add_qty->setValue(1.000);
+            double price = getFifoPrice(materialId);
 
-        ui->dsb_inc_add_price->setValue(0.00);
+            ui->lb_out_available_qty->setText(QString("На складе: %1 %2")
+                                                  .arg(QString::number(stock, 'f', 3))
+                                                  .arg(entry.unit));
 
-        calculateCurrentRowSum();
+            if (stock <= 0) ui->lb_out_available_qty->setStyleSheet("color: red; font-weight: bold;");
+            else ui->lb_out_available_qty->setStyleSheet("color: blue;");
+
+            sbPrice->setValue(price);
+        } else {
+            sbPrice->setValue(0.00);
+        }
+
+        calculateCurrentRowSum(mode);
     }
 }
 
-void MainWidget::calculateCurrentRowSum()
+void MainWidget::calculateCurrentRowSum(DocMode mode)
 {
-    double qty = ui->dsb_inc_add_qty->value();
-    double price = ui->dsb_inc_add_price->value();
-    double total = qty * price;
+    QDoubleSpinBox *sbQty   = (mode == Incoming) ? ui->dsb_inc_add_qty   : ui->dsb_out_add_qty;
+    QDoubleSpinBox *sbPrice = (mode == Incoming) ? ui->dsb_inc_add_price : ui->dsb_out_add_price;
+    QLineEdit *leSum        = (mode == Incoming) ? ui->le_inc_add_sum     : ui->le_out_add_sum;
 
-    ui->le_inc_add_sum->setText(QString::number(total, 'f', 2));
+    double total = sbQty->value() * sbPrice->value();
+    leSum->setText(QString::number(total, 'f', 2));
 }
 
-void MainWidget::insertIncomingRow()
+void MainWidget::addDocRow(DocMode mode)
 {
-    int matId = ui->cb_inc_add_material->currentData().toInt();
-    QString matName = ui->cb_inc_add_material->currentText();
-    QString category = ui->le_inc_add_category->text();
-    QString unit = ui->le_inc_add_unit->text();
-    double qty = ui->dsb_inc_add_qty->value();
-    double price = ui->dsb_inc_add_price->value();
+    QComboBox *cb       = (mode == Incoming) ? ui->cb_inc_add_material : ui->cb_out_add_material;
+    QLineEdit *leCat    = (mode == Incoming) ? ui->le_inc_add_category : ui->le_out_add_category;
+    QLineEdit *leUnit   = (mode == Incoming) ? ui->le_inc_add_unit     : ui->le_out_add_unit;
+    QDoubleSpinBox *sbQty = (mode == Incoming) ? ui->dsb_inc_add_qty   : ui->dsb_out_add_qty;
+    QDoubleSpinBox *sbPrice = (mode == Incoming) ? ui->dsb_inc_add_price : ui->dsb_out_add_price;
+    QTableWidget *table = (mode == Incoming) ? ui->tw_incoming_editor : ui->tw_outgoing_editor;
+
+    int matId = cb->currentData().toInt();
+    QString matName = cb->currentText();
+    QString category = leCat->text();
+    QString unit = leUnit->text();
+    double qty = sbQty->value();
+    double price = sbPrice->value();
     double sum = qty * price;
 
     if (matId <= 0) {
         QMessageBox::warning(this, "Внимание", "Выберите материал из списка!");
-        ui->cb_inc_add_material->setFocus();
+        cb->setFocus();
         return;
     }
     if (qty <= 0.0001) {
         QMessageBox::warning(this, "Внимание", "Количество должно быть больше нуля!");
-        ui->dsb_inc_add_qty->setFocus();
+        sbQty->setFocus();
         return;
     }
     if (price <= 0.001) {
-        QMessageBox::warning(this, "Внимание", "Укажите цену закупки!");
-        ui->dsb_inc_add_price->setFocus();
+        QString msg = (mode == Incoming) ? "Укажите цену закупки!" : "Укажите цену списания!";
+        QMessageBox::warning(this, "Внимание", msg);
+        sbPrice->setFocus();
         return;
     }
 
+    if (mode == Outgoing) {
+        double available = getAvailableStock(matId);
+        if (qty > available + 0.0001) {
+            QMessageBox::warning(this, "Ошибка остатков",
+                                 QString("Недостаточно товара на складе!\n"
+                                         "Вы пытаетесь списать: %1\n"
+                                         "Доступно: %2").arg(qty).arg(available));
+            return;
+        }
+    }
+
     int row = 0;
-    ui->tw_incoming_editor->insertRow(row);
+    table->insertRow(row);
 
     QTableWidgetItem *itemMat  = new QTableWidgetItem(matName);
     QTableWidgetItem *itemCat  = new QTableWidgetItem(category);
+    QTableWidgetItem *itemQty  = new QTableWidgetItem(QString::number(qty, 'f', 3));
     QTableWidgetItem *itemUnit = new QTableWidgetItem(unit);
-
-    QTableWidgetItem *itemQty   = new QTableWidgetItem(QString::number(qty, 'f', 3));
     QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
-    QTableWidgetItem *itemSum   = new QTableWidgetItem(QString::number(sum, 'f', 2));
+    QTableWidgetItem *itemSum  = new QTableWidgetItem(QString::number(sum, 'f', 2));
 
     itemMat->setData(Qt::UserRole, matId);
 
+    QList<QTableWidgetItem*> allItems = {itemMat, itemCat, itemQty, itemUnit, itemPrice, itemSum};
+    for (auto item : allItems) {
+        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+    }
     itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
     itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
     itemSum->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
-    Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-    itemMat->setFlags(flags);
-    itemCat->setFlags(flags);
-    itemQty->setFlags(flags);
-    itemUnit->setFlags(flags);
-    itemPrice->setFlags(flags);
-    itemSum->setFlags(flags);
+    table->setItem(row, 0, itemMat);
+    table->setItem(row, 1, itemCat);
+    table->setItem(row, 2, itemQty);
+    table->setItem(row, 3, itemUnit);
+    table->setItem(row, 4, itemPrice);
+    table->setItem(row, 5, itemSum);
 
-    ui->tw_incoming_editor->setItem(row, 0, itemMat);
-    ui->tw_incoming_editor->setItem(row, 1, itemCat);
-    ui->tw_incoming_editor->setItem(row, 2, itemQty);
-    ui->tw_incoming_editor->setItem(row, 3, itemUnit);
-    ui->tw_incoming_editor->setItem(row, 4, itemPrice);
-    ui->tw_incoming_editor->setItem(row, 5, itemSum);
+    clearDocInputBar(mode);
+    updateDocTotalSum(mode);
 
-    clearIncomingInputBar();
-    updateIncomingTotalSum();
-
-    qDebug() << "Добавлен материал ID:" << matId << "в таблицу редактора.";
+    qDebug() << (mode == Incoming ? "Приход:" : "Расход:") << matName << "добавлен в список.";
 }
 
-void MainWidget::clearIncomingInputBar()
+void MainWidget::clearDocInputBar(DocMode mode)
 {
-    ui->cb_inc_add_material->setCurrentIndex(0);
-    ui->le_inc_add_category->clear();
-    ui->dsb_inc_add_qty->setValue(0);
-    ui->le_inc_add_unit->clear();
-    ui->dsb_inc_add_price->setValue(0);
-    ui->le_inc_add_sum->setText("0.00");
+    QComboBox *cb       = (mode == Incoming) ? ui->cb_inc_add_material : ui->cb_out_add_material;
+    QLineEdit *leCat    = (mode == Incoming) ? ui->le_inc_add_category : ui->le_out_add_category;
+    QLineEdit *leUnit   = (mode == Incoming) ? ui->le_inc_add_unit     : ui->le_out_add_unit;
+    QDoubleSpinBox *sbQty = (mode == Incoming) ? ui->dsb_inc_add_qty   : ui->dsb_out_add_qty;
+    QDoubleSpinBox *sbPrice = (mode == Incoming) ? ui->dsb_inc_add_price : ui->dsb_out_add_price;
+    QLineEdit *leSum    = (mode == Incoming) ? ui->le_inc_add_sum      : ui->le_out_add_sum;
 
-    ui->cb_inc_add_material->setFocus();
+    cb->setCurrentIndex(0);
+    leCat->clear();
+    leUnit->clear();
+    sbQty->setValue(0);
+    sbPrice->setValue(0);
+    leSum->setText("0.00");
+    cb->setFocus();
 }
 
-void MainWidget::deleteIncomingRow(int row)
+void MainWidget::deleteDocRow(DocMode mode, int row)
 {
-    if (row < 0 || row >= ui->tw_incoming_editor->rowCount()) return;
+    QTableWidget *table = (mode == Incoming) ? ui->tw_incoming_editor : ui->tw_outgoing_editor;
 
-    QString matName = ui->tw_incoming_editor->item(row, 0)->text();
+    if (row < 0 || row >= table->rowCount()) return;
+
+    QString matName = table->item(row, 0)->text();
 
     QMessageBox msgBox(
         QMessageBox::Question,
@@ -2025,39 +2195,25 @@ void MainWidget::deleteIncomingRow(int row)
     msgBox.setButtonText(QMessageBox::No, "Отмена");
 
     if (msgBox.exec() == QMessageBox::Yes) {
-        ui->tw_incoming_editor->removeRow(row);
+        table->removeRow(row);
 
-        updateIncomingTotalSum();
+        updateDocTotalSum(mode);
 
-        qDebug() << "Строка" << row << "удалена пользователем.";
+        qDebug() << (mode == Incoming ? "Приход:" : "Расход:") << "строка" << row << "удалена.";
     }
 }
 
-void MainWidget::updateIncomingTotalSum()
+void MainWidget::updateDocTotalSum(DocMode mode)
 {
-    double totalSum = 0.0;
+    QTableWidget *table = (mode == Incoming) ? ui->tw_incoming_editor : ui->tw_outgoing_editor;
+    QLabel *totalLb     = (mode == Incoming) ? ui->lb_new_incoming_total_value : ui->lb_new_outgoing_total_value;
 
-    for (int row = 0; row < ui->tw_incoming_editor->rowCount(); ++row) {
-
-        QTableWidgetItem *item = ui->tw_incoming_editor->item(row, 5);
-
-        if (item) {
-            bool ok;
-            double value = item->text().toDouble(&ok);
-
-            if (ok) {
-                totalSum += value;
-            }
-        }
+    double total = 0.0;
+    for (int i = 0; i < table->rowCount(); ++i) {
+        total += table->item(i, 5)->text().toDouble();
     }
 
-    ui->lb_new_incoming_total_value->setText(QString::number(totalSum, 'f', 2));
-
-    if (totalSum > 0) {
-        ui->lb_new_incoming_total_value->setStyleSheet("font-weight: bold; color: #006400; font-size: 13pt;");
-    } else {
-        ui->lb_new_incoming_total_value->setStyleSheet("font-weight: normal; color: black; font-size: 13pt;");
-    }
+    totalLb->setText(QString::number(total, 'f', 2));
 }
 
 void MainWidget::saveIncoming()
@@ -2146,11 +2302,158 @@ void MainWidget::saveIncoming()
     if (db.commit()) {
         QMessageBox::information(this, "Успех", "Поступление успешно проведено.");
 
-        closeIncomingWorkArea();
+        closeDocWorkArea(Incoming);
 
         loadWarehouseTable();
     } else {
         db.rollback();
         QMessageBox::critical(this, "Ошибка", "Критическая ошибка фиксации данных в БД.");
     }
+}
+
+DocUI MainWidget::getDocUI(DocMode mode) {
+    if (mode == Incoming) {
+        return {
+            ui->tw_incoming_history,
+            ui->tw_incoming_details,
+            ui->le_incoming_search,
+            ui->cb_incoming_period,
+            ui->cb_incoming_filter_counterparty,
+            ui->de_incoming_start,
+            ui->de_incoming_end,
+            ui->sw_incoming
+        };
+    } else {
+        return {
+            ui->tw_outgoing_history,
+            ui->tw_outgoing_details,
+            ui->le_outgoing_search,
+            ui->cb_outgoing_period,
+            nullptr,
+            ui->de_outgoing_start,
+            ui->de_outgoing_end,
+            ui->sw_outgoing
+        };
+    }
+}
+
+void MainWidget::saveOutgoing()
+{
+    int rows = ui->tw_outgoing_editor->rowCount();
+    if (rows == 0) {
+        QMessageBox::warning(this, "Внимание", "Таблица списания пуста!");
+        return;
+    }
+
+    QMessageBox::StandardButton res = QMessageBox::question(this, "Подтверждение",
+                                                            "Провести списание материалов со склада?",
+                                                            QMessageBox::Yes | QMessageBox::No);
+    if (res != QMessageBox::Yes) return;
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.transaction()) return;
+
+    QSqlQuery query(db);
+    QDateTime finalDateTime(ui->de_new_outgoing_date->date(), QTime::currentTime());
+
+    query.prepare("INSERT INTO documents (doc_type, doc_date, user_id, description) "
+                  "VALUES ('outgoing', :date, :userId, :desc)");
+    query.bindValue(":date", finalDateTime);
+    query.bindValue(":userId", userId);
+    query.bindValue(":desc", ui->le_new_outgoing_description->text().trimmed());
+
+    if (!query.exec()) {
+        db.rollback();
+        return;
+    }
+
+    int docId = query.lastInsertId().toInt();
+
+    for (int row = 0; row < rows; ++row) {
+        int matId = ui->tw_outgoing_editor->item(row, 0)->data(Qt::UserRole).toInt();
+        double qtyToSubtract = ui->tw_outgoing_editor->item(row, 2)->text().toDouble();
+
+        QSqlQuery batchQuery(db);
+        batchQuery.prepare("SELECT id, current_quantity, purchase_price FROM batches "
+                           "WHERE material_id = :matId AND current_quantity > 0 "
+                           "ORDER BY incoming_date ASC");
+        batchQuery.bindValue(":matId", matId);
+        batchQuery.exec();
+
+        double remainingInRequest = qtyToSubtract;
+
+        while (batchQuery.next() && remainingInRequest > 0.0001) {
+            int batchId = batchQuery.value(0).toInt();
+            double batchQty = batchQuery.value(1).toDouble();
+            double buyPrice = batchQuery.value(2).toDouble();
+
+            double canTake = qMin(remainingInRequest, batchQty);
+
+            QSqlQuery updateBatch(db);
+            updateBatch.prepare("UPDATE batches SET current_quantity = current_quantity - :take "
+                                "WHERE id = :id");
+            updateBatch.bindValue(":take", canTake);
+            updateBatch.bindValue(":id", batchId);
+            updateBatch.exec();
+
+            QSqlQuery qTrans(db);
+            qTrans.prepare("INSERT INTO inventory_transactions (document_id, material_id, batch_id, quantity, price) "
+                           "VALUES (:docId, :matId, :batchId, :qty, :price)");
+            qTrans.bindValue(":docId", docId);
+            qTrans.bindValue(":matId", matId);
+            qTrans.bindValue(":batchId", batchId);
+
+            qTrans.bindValue(":qty", -canTake);
+
+            qTrans.bindValue(":price", buyPrice);
+            qTrans.exec();
+
+            remainingInRequest -= canTake;
+        }
+
+        if (remainingInRequest > 0.0001) {
+            db.rollback();
+            QMessageBox::warning(this, "Ошибка остатков",
+                                 QString("Недостаточно товара '%1' на складе!").arg(ui->tw_outgoing_editor->item(row, 0)->text()));
+            return;
+        }
+    }
+
+    if (db.commit()) {
+        QMessageBox::information(this, "Успех", "Списание успешно проведено.");
+        closeDocWorkArea(Outgoing);
+        loadWarehouseTable();
+    } else {
+        db.rollback();
+    }
+}
+
+double MainWidget::getFifoPrice(int materialId)
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    QSqlQuery query(db);
+
+    query.prepare("SELECT purchase_price FROM batches "
+                  "WHERE material_id = :matId AND current_quantity > 0 "
+                  "ORDER BY incoming_date ASC LIMIT 1");
+    query.bindValue(":matId", materialId);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toDouble();
+    }
+    return 0.0;
+}
+
+double MainWidget::getAvailableStock(int materialId)
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    QSqlQuery query(db);
+
+    query.prepare("SELECT SUM(current_quantity) FROM batches WHERE material_id = :id");
+    query.bindValue(":id", materialId);
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toDouble();
+    }
+    return 0.0;
 }

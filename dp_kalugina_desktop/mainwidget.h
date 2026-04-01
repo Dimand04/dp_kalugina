@@ -13,6 +13,27 @@
 #include <QDoubleSpinBox>
 #include <QComboBox>
 #include <QCompleter>
+#include <QDateEdit>
+#include <QStackedWidget>
+
+struct MaterialEntry {
+    int id;
+    QString category;
+    QString unit;
+};
+
+enum DocMode { Incoming, Outgoing };
+
+struct DocUI {
+    QTableWidget *historyTable;
+    QTableWidget *detailsTable;
+    QLineEdit *searchLe;
+    QComboBox *periodCb;
+    QComboBox *counterpartyFilterCb;
+    QDateEdit *deStart;
+    QDateEdit *deEnd;
+    QStackedWidget *stack;
+};
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -23,13 +44,6 @@ QT_END_NAMESPACE
 class MainWidget : public QWidget
 {
     Q_OBJECT
-
-struct MaterialEntry {
-    int id;
-    QString category;
-    QString unit;
-};
-QMap<int, MaterialEntry> m_materialsCache;
 
 public:
     MainWidget(int userId, int userRole, QWidget *parent = nullptr);
@@ -43,6 +57,7 @@ private slots:
     void tabw_administration_change(int index);
     void tabw_warehouse_change();
     void tabw_incoming_change();
+    void tabw_outgoing_change();
 
     void load_users_table();
     void filter_users();
@@ -95,24 +110,25 @@ private slots:
     void saveInventory();
 
     void loadIncomingSuppliers();
-    void incoming_period_currentIndexChanged(int index);
-    void filter_incoming();
-    void loadIncomingHistoryTable();
-    void toggleIncomingLayout();
-    void table_incoming_clicked(int row);
-    void loadIncomingDetails();
-    void showIncoming();
-    void incoming_cancel();
-    void closeIncomingWorkArea();
+    void updateDocPeriod(DocMode mode, int index);
+    void filterDocs(DocMode mode);
+    void loadHistoryTable(DocMode mode);
+    void toggleDocLayout(DocMode mode);
+    void handleDocClick(DocMode mode, int row);
+    void loadDocDetails(DocMode mode);
+    void prepareDocEditor(DocMode mode);
+    void cancelDocOperation(DocMode mode);
+    void closeDocWorkArea(DocMode mode);
     void loadAddIncomingSuppliers();
-    void loadAddIncomingMaterials();
-    void on_cb_inc_add_material_currentIndexChanged(int index);
-    void calculateCurrentRowSum();
-    void insertIncomingRow();
-    void clearIncomingInputBar();
-    void deleteIncomingRow(int row);
-    void updateIncomingTotalSum();
+    void loadAddDocMaterials(DocMode mode);
+    void handleMaterialSelectionChanged(DocMode mode);
+    void calculateCurrentRowSum(DocMode mode);
+    void addDocRow(DocMode mode);
+    void clearDocInputBar(DocMode mode);
+    void deleteDocRow(DocMode mode, int row);
+    void updateDocTotalSum(DocMode mode);
     void saveIncoming();
+    void saveOutgoing();
 
 private:
     Ui::MainWidget *ui;
@@ -126,14 +142,23 @@ private:
     int currentMaterialBatchesId;
     int currentInventoryId;
     int currentIncomingId;
+    int currentOutgoingId;
 
     bool m_isWarehouseDetailsOpened = false;
     bool m_isFirstWarehouseOpen = true;
     bool m_isInventoryLoading = false;
     bool m_isIncomingDetailsOpened = false;
     bool m_isFirstIncomingOpen = true;
+    bool m_isOutgoingDetailsOpened = false;
+    bool m_isFirstOutgoingOpen = true;
 
     QDate getEarliestInventoryDate();
-    QDate getEarliestIncomingDate();
+    QDate getEarliestDocDate(QString type);
+    double getFifoPrice(int materialId);
+    double getAvailableStock(int materialId);
+
+    DocUI getDocUI(DocMode mode);
+
+    QMap<int, MaterialEntry> m_materialsCache;
 };
 #endif // MAINWIDGET_H
