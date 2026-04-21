@@ -1152,6 +1152,7 @@ void MainWidget::loadInventoryDetails()
     ui->tw_inventoryDetails->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tw_inventoryDetails->setRowCount(0);
     ui->tw_inventoryDetails->setSortingEnabled(false);
+    ui->lb_inventory_title->setVisible(false);
 
     QHeaderView *header = ui->tw_inventoryDetails->horizontalHeader();
     header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -1258,73 +1259,96 @@ void MainWidget::showInventory()
     ui->sw_inventarization->setCurrentIndex(1);
     ui->pb_inventoryDetailsBack->setVisible(false);
     ui->widget->setVisible(true);
+    ui->lb_inventory_title->setVisible(true);
 
     m_isInventoryLoading = true;
 
+    ui->tw_inventoryDetails->setRowCount(0);
+    ui->tw_inventoryDetails->setColumnCount(9);
+    ui->tw_inventoryDetails->setHorizontalHeaderLabels({
+        "Категория", "Материал", "Ед. изм.", "Учет (Система)", "Факт", "Разница", "Цена сред.", "Сумма разницы", "Причина"
+    });
+
     ui->tw_inventoryDetails->setEditTriggers(QAbstractItemView::DoubleClicked |
                                              QAbstractItemView::SelectedClicked |
-                                             QAbstractItemView::EditKeyPressed |
                                              QAbstractItemView::AnyKeyPressed);
 
-    ui->tw_inventoryDetails->setRowCount(0);
+    QHeaderView *header = ui->tw_inventoryDetails->horizontalHeader();
+    header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    header->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(4, QHeaderView::Stretch);
+    header->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(7, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(8, QHeaderView::Stretch);
 
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
-    QSqlQuery query(db);
+    if (!db.isValid() || !db.isOpen()) {
+        m_isInventoryLoading = false;
+        return;
+    }
 
+    QSqlQuery query(db);
     QString sql =
         "SELECT c.name, m.name, u.name, "
         "COALESCE(SUM(b.current_quantity), 0) as expected, m.id, "
-        "COALESCE(ROUND(SUM(b.current_quantity * b.purchase_price) / SUM(b.current_quantity), 2), 0) as avg_price "
+        "COALESCE(ROUND(SUM(b.current_quantity * b.purchase_price) / SUM(b.current_quantity), 3), 0) as avg_price "
         "FROM materials m "
         "JOIN categories c ON m.category_id = c.id "
         "JOIN units u ON m.unit_id = u.id "
         "LEFT JOIN batches b ON m.id = b.material_id "
-        "GROUP BY m.id, c.name, m.name, u.name";
+        "GROUP BY m.id, c.name, m.name, u.name "
+        "HAVING expected > 0.0001";
 
     if (query.exec(sql)) {
         int row = 0;
+        ui->tw_inventoryDetails->setSortingEnabled(false);
+
         while (query.next()) {
             ui->tw_inventoryDetails->insertRow(row);
 
-            QString unit = query.value(2).toString();
-            double expected = query.value(3).toDouble();
-            double price = query.value(5).toDouble();
+            QString unit     = query.value(2).toString();
+            double expected  = query.value(3).toDouble();
+            int matId        = query.value(4).toInt();
+            double avgPrice  = query.value(5).toDouble();
+
             bool isPieces = (unit.toLower() == "шт" || unit.toLower() == "шт.");
 
-            QTableWidgetItem *itemCat = new QTableWidgetItem(query.value(0).toString());
-            itemCat->setData(Qt::UserRole, query.value(4).toInt());
-
-            QTableWidgetItem *itemMat  = new QTableWidgetItem(query.value(1).toString());
-            QTableWidgetItem *itemUnit = new QTableWidgetItem(unit);
+            QTableWidgetItem *itemCat     = new QTableWidgetItem(query.value(0).toString());
+            QTableWidgetItem *itemMat     = new QTableWidgetItem(query.value(1).toString());
+            QTableWidgetItem *itemUnit    = new QTableWidgetItem(unit);
 
             QString expStr = isPieces ? QString::number(expected, 'f', 0) : QString::number(expected, 'f', 3);
-            QTableWidgetItem *itemExp = new QTableWidgetItem(expStr);
+            QTableWidgetItem *itemExp     = new QTableWidgetItem(expStr);
+            QTableWidgetItem *itemFact    = new QTableWidgetItem("");
+            QTableWidgetItem *itemDiff    = new QTableWidgetItem("-");
+            QTableWidgetItem *itemPrice   = new QTableWidgetItem(QString::number(avgPrice, 'f', 2));
+            QTableWidgetItem *itemSum     = new QTableWidgetItem("-");
+            QTableWidgetItem *itemReason  = new QTableWidgetItem("");
 
-            QTableWidgetItem *itemFact = new QTableWidgetItem("");
+            itemCat->setData(Qt::UserRole, matId);
+            itemPrice->setData(Qt::UserRole, avgPrice);
+
+            Qt::ItemFlags readOnly = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+            Qt::ItemFlags editable = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
+
+            itemCat->setFlags(readOnly);
+            itemMat->setFlags(readOnly);
+            itemUnit->setFlags(readOnly);
+            itemExp->setFlags(readOnly);
+            itemFact->setFlags(editable);
+            itemDiff->setFlags(readOnly);
+            itemPrice->setFlags(readOnly);
+            itemSum->setFlags(readOnly);
+            itemReason->setFlags(editable);
+
             itemFact->setBackground(QColor(255, 255, 225));
 
-            QTableWidgetItem *itemDiff = new QTableWidgetItem("-");
-            QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
-            itemPrice->setData(Qt::UserRole, price);
-            QTableWidgetItem *itemSum = new QTableWidgetItem("-");
-
-            QTableWidgetItem *itemReason = new QTableWidgetItem("");
-
-            Qt::ItemFlags readOnlyFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-            Qt::ItemFlags editableFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
-
-            itemCat->setFlags(readOnlyFlags);
-            itemMat->setFlags(readOnlyFlags);
-            itemUnit->setFlags(readOnlyFlags);
-            itemExp->setFlags(readOnlyFlags);
-            itemFact->setFlags(editableFlags);
-            itemDiff->setFlags(readOnlyFlags);
-            itemPrice->setFlags(readOnlyFlags);
-            itemSum->setFlags(readOnlyFlags);
-            itemReason->setFlags(editableFlags);
-
-            QList<QTableWidgetItem*> nums = {itemExp, itemFact, itemDiff, itemPrice, itemSum};
-            for(auto n : nums) n->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            QList<QTableWidgetItem*> numericItems = {itemExp, itemFact, itemDiff, itemPrice, itemSum};
+            for(auto i : numericItems) i->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
             ui->tw_inventoryDetails->setItem(row, 0, itemCat);
             ui->tw_inventoryDetails->setItem(row, 1, itemMat);
@@ -1338,7 +1362,11 @@ void MainWidget::showInventory()
 
             row++;
         }
+        ui->tw_inventoryDetails->setSortingEnabled(true);
+    } else {
+        qCritical() << "Ошибка SQL в showInventory:" << query.lastError().text();
     }
+
     m_isInventoryLoading = false;
 }
 
