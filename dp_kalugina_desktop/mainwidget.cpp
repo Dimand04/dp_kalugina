@@ -4,6 +4,7 @@
 #include "edit_role.h"
 #include "edit_user.h"
 #include "edit_widget.h"
+#include "reportwidget.h"
 
 MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     : QWidget(parent)
@@ -19,7 +20,7 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     QToolButton *logoutBtn = new QToolButton(this);
     logoutBtn->setText("Выход");
     logoutBtn->setAutoRaise(true);
-    ui->tabw_main->setCornerWidget(logoutBtn, Qt::TopRightCorner);
+    ui->tabw_main->setCornerWidget(logoutBtn, Qt::TopRightCorner); //
 
     connect(logoutBtn, &QToolButton::clicked, this, &MainWidget::logout);
 
@@ -59,6 +60,8 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->cb_warehouse_categories, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filter_warehouse);
     connect(ui->lb_change_layout, &QPushLabel::clicked, this, &MainWidget::toggleWarehouseLayout);
     connect(ui->tw_warehouse, &QTableWidget::cellClicked, this, &MainWidget::table_warehouseBatches_clicked);
+    connect(ui->pb_baches_report, &QPushButton::clicked, this, &MainWidget::reportBaches);
+    connect(ui->pb_movements_report, &QPushButton::clicked, this, &MainWidget::reportMovements);
 
     // --- 5. ИНВЕНТАРИЗАЦИЯ ---
     ui->de_history_start->setCalendarPopup(true);
@@ -85,6 +88,7 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->pb_inventorization, &QPushButton::clicked, this, &MainWidget::showInventory);
     connect(ui->pb_inventory_cancel, &QPushButton::clicked, this, &MainWidget::inventory_cancel);
     connect(ui->pb_inventory_ok, &QPushButton::clicked, this, &MainWidget::saveInventory);
+    connect(ui->pb_inventory_report, &QPushButton::clicked, this, &MainWidget::reportInventory);
 
     // --- 6. ПОСТУПЛЕНИЯ УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ---
     ui->de_incoming_start->setCalendarPopup(true);
@@ -112,6 +116,9 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->pb_incoming_add, &QPushButton::clicked, this, [this](){ prepareDocEditor(Incoming); });
     connect(ui->pb_new_incoming_cancel, &QPushButton::clicked, this, [this](){ cancelDocOperation(Incoming); });
     connect(ui->pb_new_incoming_save, &QPushButton::clicked, this, &MainWidget::saveIncoming);
+
+    connect(ui->pb_incoming_report, &QPushButton::clicked, this, &MainWidget::reportIncoming);
+    connect(ui->pb_outgoing_report, &QPushButton::clicked, this, &MainWidget::reportOutgoing);
 
     // Ввод данных в строку поступления
     connect(ui->cb_inc_add_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](){ handleMaterialSelectionChanged(Incoming); });
@@ -161,6 +168,10 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
         toggleDocLayout(Outgoing);
     });
 
+    connect(ui->pb_period_reset, &QPushButton::clicked, this, &MainWidget::setupReportDates);
+    connect(ui->pb_report_reset, &QPushButton::clicked, this, &MainWidget::tabw_report_change);
+    connect(ui->list_report_types, &QListWidget::currentRowChanged, this, &MainWidget::onReportTypeChanged);
+
     // --- 8. НАСТРОЙКА ГЕОМЕТРИИ И ФИЛЬТРОВ СОБЫТИЙ ---
     auto setupHeader = [](QTableWidget* tw) {
         tw->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -186,6 +197,8 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     ui->tabw_main->setCurrentIndex(0);
     ui->tabw_administration->setCurrentIndex(0);
     tabw_incoming_change();
+
+    showMaximized();
 }
 
 MainWidget::~MainWidget()
@@ -243,6 +256,9 @@ void MainWidget::tabw_main_change(int index)
     }
     else if(index == 2) {
         tabw_warehouse_change();
+    }
+    else if(index == 3) {
+        tabw_report_change();
     }
     else if(index == 4) {
         tabw_administration_change(0);
@@ -339,6 +355,19 @@ void MainWidget::tabw_outgoing_change()
     if (currentOutgoingId != 0) {
         loadDocDetails(Outgoing);
     }
+}
+
+void MainWidget::tabw_report_change()
+{
+    fillReportTypes();
+    fillReportFilters();
+    setupReportDates();
+
+    if (ui->list_report_types->count() > 0) {
+        ui->list_report_types->setCurrentRow(0);
+    }
+
+    ui->lb_report_summary->setText("Настройте фильтры и нажмите 'Применить'");
 }
 
 void MainWidget::load_users_table()
@@ -870,8 +899,8 @@ void MainWidget::loadWarehouseBachesTable()
         "  b.purchase_price, "
         "  DATEDIFF(NOW(), b.incoming_date) AS days_on_stock "
         "FROM batches b "
-        "JOIN suppliers s ON b.supplier_id = s.id "
-        "WHERE b.material_id = :matId AND b.current_quantity > 0 "
+        "LEFT JOIN suppliers s ON b.supplier_id = s.id "
+        "WHERE b.material_id = :matId AND b.current_quantity > 0.0001 "
         "ORDER BY b.incoming_date ASC";
 
     query.prepare(sql);
@@ -879,13 +908,19 @@ void MainWidget::loadWarehouseBachesTable()
 
     if (query.exec()) {
         ui->tw_warehouse_batches->setRowCount(0);
+        ui->tw_warehouse_batches->setSortingEnabled(false);
         int row = 0;
 
         while (query.next()) {
             ui->tw_warehouse_batches->insertRow(row);
 
             QDateTime incomingDate = query.value(0).toDateTime();
+
             QString supplier = query.value(1).toString();
+            if (supplier.isEmpty()) {
+                supplier = "Инвентаризация";
+            }
+
             double quantity = query.value(2).toDouble();
             double price = query.value(3).toDouble();
             int daysOnStock = query.value(4).toInt();
@@ -910,6 +945,9 @@ void MainWidget::loadWarehouseBachesTable()
 
             row++;
         }
+        ui->tw_warehouse_batches->setSortingEnabled(true);
+    } else {
+        qCritical() << "Ошибка загрузки партий:" << query.lastError().text();
     }
 }
 
@@ -990,6 +1028,30 @@ void MainWidget::loadWarehouseMovementsTable()
         ui->tw_warehouse_movements->setSortingEnabled(true);
         ui->tw_warehouse_movements->scrollToBottom();
     }
+}
+
+void MainWidget::reportBaches()
+{
+    if (currentMaterialBatchesId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите материал в таблице склада!");
+        return;
+    }
+
+    reportwidget *rw = new reportwidget(reportwidget::MaterialBatches, currentMaterialBatchesId, this);
+    rw->setAttribute(Qt::WA_DeleteOnClose);
+    rw->exec();
+}
+
+void MainWidget::reportMovements()
+{
+    if (currentMaterialBatchesId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите материал в таблице склада!");
+        return;
+    }
+
+    reportwidget *rw = new reportwidget(reportwidget::MaterialHistory, currentMaterialBatchesId, this);
+    rw->setAttribute(Qt::WA_DeleteOnClose);
+    rw->show();
 }
 
 void MainWidget::loadInventoryHistoryTable()
@@ -1153,6 +1215,7 @@ void MainWidget::loadInventoryDetails()
     ui->tw_inventoryDetails->setRowCount(0);
     ui->tw_inventoryDetails->setSortingEnabled(false);
     ui->lb_inventory_title->setVisible(false);
+    ui->pb_inventory_report->setVisible(true);
 
     QHeaderView *header = ui->tw_inventoryDetails->horizontalHeader();
     header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -1260,6 +1323,7 @@ void MainWidget::showInventory()
     ui->pb_inventoryDetailsBack->setVisible(false);
     ui->widget->setVisible(true);
     ui->lb_inventory_title->setVisible(true);
+    ui->pb_inventory_report->setVisible(false);
 
     m_isInventoryLoading = true;
 
@@ -1569,6 +1633,18 @@ void MainWidget::saveInventory()
         db.rollback();
         QMessageBox::critical(this, "Ошибка", "Не удалось сохранить данные в БД.");
     }
+}
+
+void MainWidget::reportInventory()
+{
+    if (currentInventoryId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите материал в таблице склада!");
+        return;
+    }
+
+    reportwidget *rw = new reportwidget(reportwidget::InventoryDoc, currentInventoryId, this);
+    rw->setAttribute(Qt::WA_DeleteOnClose);
+    rw->show();
 }
 
 void MainWidget::loadIncomingSuppliers()
@@ -2456,6 +2532,30 @@ void MainWidget::saveOutgoing()
     }
 }
 
+void MainWidget::reportIncoming()
+{
+    if (currentIncomingId <= 0) {
+        QMessageBox::warning(this, "Отчет", "Сначала выберите документ в таблице!");
+        return;
+    }
+
+    reportwidget *rw = new reportwidget(reportwidget::IncomingDoc, currentIncomingId, this);
+    rw->setAttribute(Qt::WA_DeleteOnClose);
+    rw->exec();
+}
+
+void MainWidget::reportOutgoing()
+{
+    if (currentOutgoingId <= 0) {
+        QMessageBox::warning(this, "Отчет", "Сначала выберите документ в таблице!");
+        return;
+    }
+
+    reportwidget *rw = new reportwidget(reportwidget::OutgoingDoc, currentOutgoingId, this);
+    rw->setAttribute(Qt::WA_DeleteOnClose);
+    rw->exec();
+}
+
 double MainWidget::getFifoPrice(int materialId)
 {
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
@@ -2484,4 +2584,104 @@ double MainWidget::getAvailableStock(int materialId)
         return query.value(0).toDouble();
     }
     return 0.0;
+}
+
+void MainWidget::fillReportTypes()
+{
+    ui->list_report_types->clear();
+
+    QMap<QString, QString> reports;
+    reports.insert("rep_stock", "📦 Ведомость текущих остатков");
+    reports.insert("rep_osv", "📊 Оборотно-сальдовая ведомость");
+    reports.insert("rep_purchases", "🚚 Закупки по поставщикам");
+    reports.insert("rep_outgoing", "📉 Отчет по списаниям (расход)");
+    reports.insert("rep_inventory", "📋 Реестр инвентаризаций");
+
+    for (auto it = reports.begin(); it != reports.end(); ++it) {
+        QListWidgetItem *item = new QListWidgetItem(it.value());
+        item->setData(Qt::UserRole, it.key());
+        ui->list_report_types->addItem(item);
+    }
+}
+
+void MainWidget::fillReportFilters()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    QSqlQuery query(db);
+
+    ui->cb_filter_category->clear();
+    ui->cb_filter_category->addItem("Все категории", 0);
+    if (query.exec("SELECT id, name FROM categories ORDER BY name")) {
+        while (query.next()) {
+            ui->cb_filter_category->addItem(query.value(1).toString(), query.value(0).toInt());
+        }
+    }
+
+    ui->cb_filter_supplier->clear();
+    ui->cb_filter_supplier->addItem("Все поставщики", 0);
+    if (query.exec("SELECT id, name FROM suppliers ORDER BY name")) {
+        while (query.next()) {
+            ui->cb_filter_supplier->addItem(query.value(1).toString(), query.value(0).toInt());
+        }
+    }
+}
+
+void MainWidget::setupReportDates()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    QSqlQuery query(db);
+
+    QDate minDate = QDate::currentDate().addYears(-1);
+    QDate maxDate = QDate::currentDate();
+
+    if (query.exec("SELECT MIN(doc_date) FROM documents") && query.next()) {
+        if (!query.value(0).isNull()) {
+            minDate = query.value(0).toDateTime().date();
+        }
+    }
+
+    ui->de_start->setCalendarPopup(true);
+    ui->de_end->setCalendarPopup(true);
+
+    ui->de_start->setDate(minDate);
+    ui->de_end->setDate(maxDate);
+
+    ui->de_end->setMaximumDate(maxDate);
+}
+
+void MainWidget::onReportTypeChanged()
+{
+    QListWidgetItem *current = ui->list_report_types->currentItem();
+    if (!current) return;
+
+    QString reportSlug = current->data(Qt::UserRole).toString();
+
+    ui->de_start->setEnabled(true);
+    ui->de_end->setEnabled(true);
+    ui->pb_period_reset->setEnabled(true);
+    ui->cb_filter_category->setEnabled(true);
+    ui->cb_filter_supplier->setEnabled(true);
+
+    if (reportSlug == "rep_stock") {
+        ui->de_start->setEnabled(false);
+        ui->de_end->setEnabled(false);
+        ui->pb_period_reset->setEnabled(false);
+        ui->cb_filter_supplier->setEnabled(false);
+    }
+    else if (reportSlug == "rep_osv") {
+        ui->cb_filter_supplier->setEnabled(false);
+    }
+    else if (reportSlug == "rep_purchases") {
+        ui->cb_filter_category->setEnabled(false);
+    }
+    else if (reportSlug == "rep_outgoing") {
+        ui->cb_filter_supplier->setEnabled(false);
+    }
+    else if (reportSlug == "rep_inventory") {
+        ui->cb_filter_category->setEnabled(false);
+        ui->cb_filter_supplier->setEnabled(false);
+    }
+
+    ui->tw_report_main->setRowCount(0);
+    ui->lb_report_summary->setText("Нажмите 'Применить' для формирования отчёта");
 }

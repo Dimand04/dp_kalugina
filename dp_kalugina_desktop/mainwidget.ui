@@ -29,7 +29,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabw_main">
      <property name="currentIndex">
-      <number>0</number>
+      <number>3</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -51,7 +51,7 @@
        <item row="0" column="0">
         <widget class="QStackedWidget" name="sw_incoming">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="page">
           <layout class="QGridLayout" name="gridLayout_21">
@@ -95,129 +95,10 @@
                <property name="bottomMargin">
                 <number>0</number>
                </property>
-               <item row="0" column="5">
-                <widget class="QComboBox" name="cb_incoming_period">
-                 <property name="sizeAdjustPolicy">
-                  <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
-                 </property>
-                 <item>
-                  <property name="text">
-                   <string>За всё время</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>За эту неделю</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>За месяц</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>За год</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Свой интервал</string>
-                  </property>
-                 </item>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="QPushLabel" name="lb_change_layout_incoming">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>20</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>20</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="scaledContents">
-                  <bool>true</bool>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignCenter</set>
-                 </property>
-                 <property name="margin">
-                  <number>0</number>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="9">
+               <item row="0" column="10">
                 <widget class="QPushButton" name="pb_incoming_add">
                  <property name="text">
                   <string>Оформить приход</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="8">
-                <spacer name="horizontalSpacer_6">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="0" column="4">
-                <widget class="QComboBox" name="cb_incoming_filter_counterparty"/>
-               </item>
-               <item row="0" column="7">
-                <widget class="QDateEdit" name="de_incoming_end">
-                 <property name="calendarPopup">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="2">
-                <spacer name="horizontalSpacer_5">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeType">
-                  <enum>QSizePolicy::Policy::Fixed</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>39</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item row="0" column="6">
-                <widget class="QDateEdit" name="de_incoming_start">
-                 <property name="calendarPopup">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_2">
-                 <property name="text">
-                  <string>Вид:</string>
                  </property>
                 </widget>
                </item>
@@ -228,7 +109,24 @@
                  </property>
                 </widget>
                </item>
-               <item row="1" column="0" colspan="10">
+               <item row="0" column="4">
+                <widget class="QComboBox" name="cb_incoming_filter_counterparty"/>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_2">
+                 <property name="text">
+                  <string>Вид:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="6">
+                <widget class="QDateEdit" name="de_incoming_start">
+                 <property name="calendarPopup">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0" colspan="11">
                 <widget class="QTableWidget" name="tw_incoming_history">
                  <property name="palette">
                   <palette>
@@ -344,6 +242,115 @@
                    <string>Описание</string>
                   </property>
                  </column>
+                </widget>
+               </item>
+               <item row="0" column="9">
+                <spacer name="horizontalSpacer_6">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="0" column="2">
+                <spacer name="horizontalSpacer_5">
+                 <property name="orientation">
+                  <enum>Qt::Orientation::Horizontal</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Policy::Fixed</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>39</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item row="0" column="5">
+                <widget class="QComboBox" name="cb_incoming_period">
+                 <property name="sizeAdjustPolicy">
+                  <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+                 </property>
+                 <item>
+                  <property name="text">
+                   <string>За всё время</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>За эту неделю</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>За месяц</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>За год</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Свой интервал</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item row="0" column="7">
+                <widget class="QDateEdit" name="de_incoming_end">
+                 <property name="calendarPopup">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QPushLabel" name="lb_change_layout_incoming">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignCenter</set>
+                 </property>
+                 <property name="margin">
+                  <number>0</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="8">
+                <widget class="QPushButton" name="pb_incoming_report">
+                 <property name="text">
+                  <string>Отчёт</string>
+                 </property>
                 </widget>
                </item>
               </layout>
@@ -886,14 +893,7 @@
                <property name="bottomMargin">
                 <number>0</number>
                </property>
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_11">
-                 <property name="text">
-                  <string>Вид:</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0" colspan="9">
+               <item row="1" column="0" colspan="10">
                 <widget class="QTableWidget" name="tw_outgoing_history">
                  <property name="palette">
                   <palette>
@@ -1011,41 +1011,35 @@
                  </column>
                 </widget>
                </item>
-               <item row="0" column="1">
-                <widget class="QPushLabel" name="lb_change_layout_outgoing">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>20</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>20</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string/>
-                 </property>
-                 <property name="scaledContents">
+               <item row="0" column="5">
+                <widget class="QDateEdit" name="de_outgoing_start">
+                 <property name="calendarPopup">
                   <bool>true</bool>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignCenter</set>
-                 </property>
-                 <property name="margin">
-                  <number>0</number>
                  </property>
                 </widget>
                </item>
-               <item row="0" column="7">
+               <item row="0" column="9">
+                <widget class="QPushButton" name="pb_outgoing_add">
+                 <property name="text">
+                  <string>Оформить списание</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="3">
+                <widget class="QLineEdit" name="le_outgoing_search">
+                 <property name="placeholderText">
+                  <string>Поиск по номеру</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_11">
+                 <property name="text">
+                  <string>Вид:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="8">
                 <spacer name="horizontalSpacer_10">
                  <property name="orientation">
                   <enum>Qt::Orientation::Horizontal</enum>
@@ -1090,6 +1084,47 @@
                  </item>
                 </widget>
                </item>
+               <item row="0" column="6">
+                <widget class="QDateEdit" name="de_outgoing_end">
+                 <property name="calendarPopup">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QPushLabel" name="lb_change_layout_outgoing">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignCenter</set>
+                 </property>
+                 <property name="margin">
+                  <number>0</number>
+                 </property>
+                </widget>
+               </item>
                <item row="0" column="2">
                 <spacer name="horizontalSpacer_9">
                  <property name="orientation">
@@ -1106,31 +1141,10 @@
                  </property>
                 </spacer>
                </item>
-               <item row="0" column="6">
-                <widget class="QDateEdit" name="de_outgoing_end">
-                 <property name="calendarPopup">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="5">
-                <widget class="QDateEdit" name="de_outgoing_start">
-                 <property name="calendarPopup">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="3">
-                <widget class="QLineEdit" name="le_outgoing_search">
-                 <property name="placeholderText">
-                  <string>Поиск по номеру</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="8">
-                <widget class="QPushButton" name="pb_outgoing_add">
+               <item row="0" column="7">
+                <widget class="QPushButton" name="pb_outgoing_report">
                  <property name="text">
-                  <string>Оформить списание</string>
+                  <string>Отчёт</string>
                  </property>
                 </widget>
                </item>
@@ -1944,7 +1958,27 @@
                    <property name="bottomMargin">
                     <number>3</number>
                    </property>
+                   <item row="0" column="1">
+                    <widget class="QPushButton" name="pb_baches_report">
+                     <property name="text">
+                      <string>Отчёт</string>
+                     </property>
+                    </widget>
+                   </item>
                    <item row="0" column="0">
+                    <spacer name="horizontalSpacer_13">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item row="1" column="0" colspan="2">
                     <widget class="QTableWidget" name="tw_warehouse_batches">
                      <property name="palette">
                       <palette>
@@ -2052,7 +2086,27 @@
                    <property name="bottomMargin">
                     <number>3</number>
                    </property>
+                   <item row="0" column="1">
+                    <widget class="QPushButton" name="pb_movements_report">
+                     <property name="text">
+                      <string>Отчёт</string>
+                     </property>
+                    </widget>
+                   </item>
                    <item row="0" column="0">
+                    <spacer name="horizontalSpacer_14">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item row="1" column="0" colspan="2">
                     <widget class="QTableWidget" name="tw_warehouse_movements">
                      <property name="palette">
                       <palette>
@@ -2161,7 +2215,7 @@
            <item row="0" column="0">
             <widget class="QStackedWidget" name="sw_inventarization">
              <property name="currentIndex">
-              <number>1</number>
+              <number>0</number>
              </property>
              <widget class="QWidget" name="page_1">
               <layout class="QGridLayout" name="gridLayout_13">
@@ -2191,6 +2245,35 @@
                  <property name="bottomMargin">
                   <number>0</number>
                  </property>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="cb_history_period">
+                   <item>
+                    <property name="text">
+                     <string>За всё время</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>За эту неделю</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>За месяц</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>За год</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Свой интервал</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
                  <item row="0" column="2">
                   <widget class="QDateEdit" name="de_history_start">
                    <property name="calendarPopup">
@@ -2198,18 +2281,26 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="4">
-                  <spacer name="horizontalSpacer_3">
-                   <property name="orientation">
-                    <enum>Qt::Orientation::Horizontal</enum>
+                 <item row="0" column="5">
+                  <widget class="QPushButton" name="pb_inventorization">
+                   <property name="text">
+                    <string>Провести инвентаризацию</string>
                    </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QDateEdit" name="de_history_end">
+                   <property name="calendarPopup">
+                    <bool>true</bool>
                    </property>
-                  </spacer>
+                  </widget>
+                 </item>
+                 <item row="0" column="0">
+                  <widget class="QLineEdit" name="le_history_search">
+                   <property name="placeholderText">
+                    <string>Поиск по номеру документа или ответственному</string>
+                   </property>
+                  </widget>
                  </item>
                  <item row="1" column="0" colspan="6">
                   <widget class="QTableWidget" name="tw_inventory_history">
@@ -2285,55 +2376,18 @@
                    </column>
                   </widget>
                  </item>
-                 <item row="0" column="1">
-                  <widget class="QComboBox" name="cb_history_period">
-                   <item>
-                    <property name="text">
-                     <string>За всё время</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>За эту неделю</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>За месяц</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>За год</string>
-                    </property>
-                   </item>
-                   <item>
-                    <property name="text">
-                     <string>Свой интервал</string>
-                    </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="0" column="3">
-                  <widget class="QDateEdit" name="de_history_end">
-                   <property name="calendarPopup">
-                    <bool>true</bool>
+                 <item row="0" column="4">
+                  <spacer name="horizontalSpacer_3">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
                    </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="5">
-                  <widget class="QPushButton" name="pb_inventorization">
-                   <property name="text">
-                    <string>Провести инвентаризацию</string>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
                    </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <widget class="QLineEdit" name="le_history_search">
-                   <property name="placeholderText">
-                    <string>Поиск по номеру документа или ответственному</string>
-                   </property>
-                  </widget>
+                  </spacer>
                  </item>
                 </layout>
                </item>
@@ -2413,7 +2467,14 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="0" colspan="2">
+                 <item row="0" column="2">
+                  <widget class="QPushButton" name="pb_inventory_report">
+                   <property name="text">
+                    <string>Отчёт</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="0" colspan="3">
                   <widget class="QTableWidget" name="tw_inventoryDetails">
                    <property name="palette">
                     <palette>
@@ -2501,12 +2562,25 @@
                    </column>
                   </widget>
                  </item>
-                 <item row="1" column="0" colspan="2">
+                 <item row="1" column="0" colspan="3">
                   <widget class="QLabel" name="lb_inventory_title">
                    <property name="text">
                     <string>Проведение новой инвентаризации</string>
                    </property>
                   </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <spacer name="horizontalSpacer_15">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
                  </item>
                 </layout>
                </item>
@@ -2524,6 +2598,215 @@
       <attribute name="title">
        <string>Отчёты</string>
       </attribute>
+      <layout class="QGridLayout" name="gridLayout_31">
+       <property name="leftMargin">
+        <number>3</number>
+       </property>
+       <property name="topMargin">
+        <number>3</number>
+       </property>
+       <property name="rightMargin">
+        <number>3</number>
+       </property>
+       <property name="bottomMargin">
+        <number>3</number>
+       </property>
+       <item row="0" column="1">
+        <widget class="QTableWidget" name="tw_report_main">
+         <property name="editTriggers">
+          <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+         </property>
+         <attribute name="verticalHeaderVisible">
+          <bool>false</bool>
+         </attribute>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="lb_report_summary">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" rowspan="2">
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string/>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_30">
+          <property name="leftMargin">
+           <number>3</number>
+          </property>
+          <property name="topMargin">
+           <number>3</number>
+          </property>
+          <property name="rightMargin">
+           <number>3</number>
+          </property>
+          <property name="bottomMargin">
+           <number>3</number>
+          </property>
+          <item row="10" column="0" colspan="3">
+           <widget class="QComboBox" name="cb_filter_supplier"/>
+          </item>
+          <item row="1" column="0" colspan="3">
+           <widget class="QListWidget" name="list_report_types">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>154</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0" colspan="3">
+           <widget class="QComboBox" name="cb_filter_category"/>
+          </item>
+          <item row="15" column="0" colspan="3">
+           <widget class="QPushButton" name="pb_generate_report">
+            <property name="text">
+             <string>Экспорт отчёта</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0" colspan="3">
+           <widget class="Line" name="line_24">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0" colspan="3">
+           <widget class="QLabel" name="label_22">
+            <property name="text">
+             <string>Категория</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0" colspan="3">
+           <widget class="Line" name="line_23">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="3">
+           <widget class="Line" name="line_22">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0" colspan="3">
+           <widget class="QLabel" name="label_23">
+            <property name="text">
+             <string>Поставщик</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0" colspan="3">
+           <widget class="Line" name="line_25">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="3">
+           <widget class="QLabel" name="label_21">
+            <property name="text">
+             <string>Период</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2">
+           <widget class="QToolButton" name="pb_period_reset">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset theme="QIcon::ThemeIcon::ViewRestore"/>
+            </property>
+           </widget>
+          </item>
+          <item row="14" column="0" colspan="3">
+           <spacer name="verticalSpacer_6">
+            <property name="orientation">
+             <enum>Qt::Orientation::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="0" column="0" colspan="3">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>Вид отчёта</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QDateEdit" name="de_end">
+            <property name="maximumSize">
+             <size>
+              <width>100</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QDateEdit" name="de_start">
+            <property name="maximumSize">
+             <size>
+              <width>100</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="calendarPopup">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="0" colspan="3">
+           <widget class="QPushButton" name="pb_report_apply">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Применить</string>
+            </property>
+           </widget>
+          </item>
+          <item row="13" column="0" colspan="3">
+           <widget class="QPushButton" name="pb_report_reset">
+            <property name="text">
+             <string>Сбросить</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="tab_5">
       <attribute name="title">

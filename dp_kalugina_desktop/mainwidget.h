@@ -58,6 +58,7 @@ private slots:
     void tabw_warehouse_change();
     void tabw_incoming_change();
     void tabw_outgoing_change();
+    void tabw_report_change();
 
     void load_users_table();
     void filter_users();
@@ -97,6 +98,8 @@ private slots:
     void table_warehouseBatches_clicked(int row);
     void loadWarehouseBachesTable();
     void loadWarehouseMovementsTable();
+    void reportBaches();
+    void reportMovements();
 
     void loadInventoryHistoryTable();
     void filter_inventory();
@@ -108,6 +111,7 @@ private slots:
     void inventory_cancel();
     void closeInventoryWorkArea();
     void saveInventory();
+    void reportInventory();
 
     void loadIncomingSuppliers();
     void updateDocPeriod(DocMode mode, int index);
@@ -129,6 +133,13 @@ private slots:
     void updateDocTotalSum(DocMode mode);
     void saveIncoming();
     void saveOutgoing();
+    void reportIncoming();
+    void reportOutgoing();
+
+    void fillReportTypes();
+    void fillReportFilters();
+    void setupReportDates();
+    void onReportTypeChanged();
 
 private:
     Ui::MainWidget *ui;

@@ -1,4 +1,4 @@
-QT       += core gui sql
+QT       += core gui sql printsupport svg
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -15,7 +15,8 @@ SOURCES += \
     edit_widget.cpp \
     main.cpp \
     mainwidget.cpp \
-    qpushlabel.cpp
+    qpushlabel.cpp \
+    reportwidget.cpp
 
 HEADERS += \
     authorizationwindow.h \
@@ -23,14 +24,16 @@ HEADERS += \
     edit_user.h \
     edit_widget.h \
     mainwidget.h \
-    qpushlabel.h
+    qpushlabel.h \
+    reportwidget.h
 
 FORMS += \
     authorizationwindow.ui \
     edit_role.ui \
     edit_user.ui \
     edit_widget.ui \
-    mainwidget.ui
+    mainwidget.ui \
+    reportwidget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
