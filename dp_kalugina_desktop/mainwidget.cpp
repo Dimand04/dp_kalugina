@@ -171,6 +171,43 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     connect(ui->pb_period_reset, &QPushButton::clicked, this, &MainWidget::setupReportDates);
     connect(ui->pb_report_reset, &QPushButton::clicked, this, &MainWidget::tabw_report_change);
     connect(ui->list_report_types, &QListWidget::currentRowChanged, this, &MainWidget::onReportTypeChanged);
+    connect(ui->pb_report_apply, &QPushButton::clicked, this, &MainWidget::reportApply);
+    connect(ui->pb_generate_report, &QPushButton::clicked, this, &MainWidget::generateReport);
+
+    // --- ЖУРНАЛ ЛОГОВ (КОННЕКТЫ) ---
+    ui->de_log_start->setCalendarPopup(true);
+    ui->de_log_end->setCalendarPopup(true);
+
+    connect(ui->cb_log_period, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWidget::updateLogPeriod);
+
+    auto setCustomLogPeriod = [this](){
+        if (ui->cb_log_period->currentIndex() != 4) {
+            ui->cb_log_period->blockSignals(true);
+            ui->cb_log_period->setCurrentIndex(4);
+            ui->cb_log_period->blockSignals(false);
+        }
+    };
+    connect(ui->de_log_start, &QDateEdit::userDateChanged, this, setCustomLogPeriod);
+    connect(ui->de_log_end, &QDateEdit::userDateChanged, this, setCustomLogPeriod);
+
+    connect(ui->de_log_start, &QDateEdit::dateChanged, this, [this](QDate d){
+        ui->de_log_end->setMinimumDate(d);
+        loadLogsTable();
+    });
+    connect(ui->de_log_end, &QDateEdit::dateChanged, this, [this](){
+        loadLogsTable();
+    });
+
+    connect(ui->cb_log_user, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::loadLogsTable);
+    connect(ui->cb_log_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::loadLogsTable);
+    connect(ui->le_log_search, &QLineEdit::textChanged, this, &MainWidget::loadLogsTable);
+    connect(ui->pb_log_reset, &QPushButton::clicked, this, [this](){
+        ui->le_log_search->clear();
+        ui->cb_log_user->setCurrentIndex(0);
+        ui->cb_log_type->setCurrentIndex(0);
+        ui->cb_log_period->setCurrentIndex(0);
+    });
 
     // --- 8. НАСТРОЙКА ГЕОМЕТРИИ И ФИЛЬТРОВ СОБЫТИЙ ---
     auto setupHeader = [](QTableWidget* tw) {
@@ -278,7 +315,18 @@ void MainWidget::tabw_administration_change(int index)
         loadRoles();
     }
     else if(index == 2) {
+        if (m_isFirstLogsOpen) {
+            fillLogUsers();
+            fillLogTypes();
+            fillLogPeriods();
 
+            ui->cb_log_period->setCurrentIndex(-1);
+            ui->cb_log_period->setCurrentIndex(0);
+
+            m_isFirstLogsOpen = false;
+        } else {
+            loadLogsTable();
+        }
     }
 }
 
@@ -1037,7 +1085,7 @@ void MainWidget::reportBaches()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::MaterialBatches, currentMaterialBatchesId, this);
+    reportwidget *rw = new reportwidget(reportwidget::MaterialBatches, currentMaterialBatchesId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
     rw->exec();
 }
@@ -1049,7 +1097,7 @@ void MainWidget::reportMovements()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::MaterialHistory, currentMaterialBatchesId, this);
+    reportwidget *rw = new reportwidget(reportwidget::MaterialHistory, currentMaterialBatchesId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
     rw->show();
 }
@@ -1642,7 +1690,7 @@ void MainWidget::reportInventory()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::InventoryDoc, currentInventoryId, this);
+    reportwidget *rw = new reportwidget(reportwidget::InventoryDoc, currentInventoryId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
     rw->show();
 }
@@ -2539,7 +2587,7 @@ void MainWidget::reportIncoming()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::IncomingDoc, currentIncomingId, this);
+    reportwidget *rw = new reportwidget(reportwidget::IncomingDoc, currentIncomingId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
     rw->exec();
 }
@@ -2551,7 +2599,7 @@ void MainWidget::reportOutgoing()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::OutgoingDoc, currentOutgoingId, this);
+    reportwidget *rw = new reportwidget(reportwidget::OutgoingDoc, currentOutgoingId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
     rw->exec();
 }
@@ -2590,16 +2638,21 @@ void MainWidget::fillReportTypes()
 {
     ui->list_report_types->clear();
 
-    QMap<QString, QString> reports;
-    reports.insert("rep_stock", "📦 Ведомость текущих остатков");
-    reports.insert("rep_osv", "📊 Оборотно-сальдовая ведомость");
-    reports.insert("rep_purchases", "🚚 Закупки по поставщикам");
-    reports.insert("rep_outgoing", "📉 Отчет по списаниям (расход)");
-    reports.insert("rep_inventory", "📋 Реестр инвентаризаций");
+    struct ReportDef { QString slug; QString icon; QString name; };
+    QList<ReportDef> reports = {
+        {"rep_stock",     "📦", "Ведомость текущих остатков"},
+        {"rep_osv",       "📊", "Оборотно-сальдовая ведомость"},
+        {"rep_purchases", "🚚", "Закупки по поставщикам"},
+        {"rep_outgoing",  "📉", "Отчет по списаниям (расход)"},
+        {"rep_inventory", "📋", "Реестр инвентаризаций"}
+    };
 
-    for (auto it = reports.begin(); it != reports.end(); ++it) {
-        QListWidgetItem *item = new QListWidgetItem(it.value());
-        item->setData(Qt::UserRole, it.key());
+    for (const auto &rep : reports) {
+        QListWidgetItem *item = new QListWidgetItem(rep.icon + " " + rep.name);
+
+        item->setData(Qt::UserRole, rep.slug);
+        item->setData(Qt::UserRole + 1, rep.name);
+
         ui->list_report_types->addItem(item);
     }
 }
@@ -2682,6 +2735,761 @@ void MainWidget::onReportTypeChanged()
         ui->cb_filter_supplier->setEnabled(false);
     }
 
+    if (!ui->cb_filter_supplier->isEnabled()) {
+        ui->cb_filter_supplier->setCurrentIndex(0);
+    }
+    if (!ui->cb_filter_category->isEnabled()) {
+        ui->cb_filter_category->setCurrentIndex(0);
+    }
+
     ui->tw_report_main->setRowCount(0);
     ui->lb_report_summary->setText("Нажмите 'Применить' для формирования отчёта");
+}
+
+void MainWidget::reportApply()
+{
+    QListWidgetItem *current = ui->list_report_types->currentItem();
+    if (!current) {
+        QMessageBox::warning(this, "Отчеты", "Выберите тип отчета из списка слева.");
+        return;
+    }
+
+    QString reportSlug = current->data(Qt::UserRole).toString();
+
+    ui->tw_report_main->setRowCount(0);
+    ui->lb_report_summary->setText("Генерация...");
+
+    if (reportSlug == "rep_stock") {
+        generateStockReport();
+    }
+    else if (reportSlug == "rep_purchases") {
+        generatePurchasesReport();
+    }
+    else if (reportSlug == "rep_outgoing") {
+        generateOutgoingReport();
+    }
+    else if (reportSlug == "rep_osv") {
+        generateOSVReport();
+    }
+    else if (reportSlug == "rep_inventory") {
+        generateInventoryRegistryReport();
+    }
+}
+
+void MainWidget::generateStockReport()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    QSqlQuery query(db);
+
+    ui->tw_report_main->setColumnCount(6);
+    ui->tw_report_main->setHorizontalHeaderLabels({
+        "Категория", "Материал", "Остаток", "Ед. изм.", "Сред. цена", "Сумма"
+    });
+
+    QHeaderView *header = ui->tw_report_main->horizontalHeader();
+    header->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(1, QHeaderView::Stretch);
+    for(int i=2; i<6; ++i) header->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+
+    int catId = ui->cb_filter_category->currentData().toInt();
+
+    QString sql =
+        "SELECT c.name, m.name, SUM(b.current_quantity) as total_qty, u.name, "
+        "ROUND(SUM(b.current_quantity * b.purchase_price) / SUM(b.current_quantity), 2) as avg_price, "
+        "ROUND(SUM(b.current_quantity * b.purchase_price), 2) as total_value "
+        "FROM materials m "
+        "JOIN categories c ON m.category_id = c.id "
+        "JOIN units u ON m.unit_id = u.id "
+        "JOIN batches b ON m.id = b.material_id "
+        "WHERE b.current_quantity > 0 ";
+
+    if (catId > 0) sql += " AND c.id = :catId ";
+
+    sql += " GROUP BY m.id, c.name, m.name, u.name ORDER BY c.name, m.name";
+
+    query.prepare(sql);
+    if (catId > 0) query.bindValue(":catId", catId);
+
+    if (query.exec()) {
+        ui->tw_report_main->setSortingEnabled(false);
+        double grandTotalMoney = 0.0;
+        int rowCount = 0;
+
+        while (query.next()) {
+            int row = ui->tw_report_main->rowCount();
+            ui->tw_report_main->insertRow(row);
+
+            QString category = query.value(0).toString();
+            QString material = query.value(1).toString();
+            double qty       = query.value(2).toDouble();
+            QString unit     = query.value(3).toString();
+            double avgPrice  = query.value(4).toDouble();
+            double totalSum  = query.value(5).toDouble();
+
+            grandTotalMoney += totalSum;
+            rowCount++;
+
+            QTableWidgetItem *itemQty = new QTableWidgetItem(QString::number(qty, 'f', 3));
+            QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(avgPrice, 'f', 2));
+            QTableWidgetItem *itemSum = new QTableWidgetItem(QString::number(totalSum, 'f', 2));
+
+            itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemSum->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            ui->tw_report_main->setItem(row, 0, new QTableWidgetItem(category));
+            ui->tw_report_main->setItem(row, 1, new QTableWidgetItem(material));
+            ui->tw_report_main->setItem(row, 2, itemQty);
+            ui->tw_report_main->setItem(row, 3, new QTableWidgetItem(unit));
+            ui->tw_report_main->setItem(row, 4, itemPrice);
+            ui->tw_report_main->setItem(row, 5, itemSum);
+        }
+
+        ui->tw_report_main->setSortingEnabled(true);
+
+        ui->lb_report_summary->setText(QString("Всего наименований: %1 | Общая стоимость склада: %2")
+                                           .arg(rowCount)
+                                           .arg(QString::number(grandTotalMoney, 'f', 2)));
+
+    } else {
+        qCritical() << "Ошибка генерации отчета остатков:" << query.lastError().text();
+        ui->lb_report_summary->setText("Ошибка выполнения запроса.");
+    }
+}
+
+void MainWidget::generatePurchasesReport()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    ui->tw_report_main->setColumnCount(9);
+    ui->tw_report_main->setHorizontalHeaderLabels({
+        "Дата", "Док. №", "Поставщик", "Материал", "Категория", "Кол-во", "Ед. изм.", "Цена", "Сумма"
+    });
+
+    QHeaderView *header = ui->tw_report_main->horizontalHeader();
+    header->setSectionResizeMode(QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(3, QHeaderView::Stretch);
+
+    QDateTime start = QDateTime(ui->de_start->date(), QTime(0, 0, 0));
+    QDateTime end = QDateTime(ui->de_end->date(), QTime(23, 59, 59));
+    int supplierId = ui->cb_filter_supplier->currentData().toInt();
+
+    QString sql =
+        "SELECT d.doc_date, d.id, s.name, m.name, c.name, it.quantity, u.name, it.price, (it.quantity * it.price) "
+        "FROM inventory_transactions it "
+        "JOIN documents d ON it.document_id = d.id "
+        "JOIN batches b ON it.batch_id = b.id "
+        "JOIN suppliers s ON b.supplier_id = s.id "
+        "JOIN materials m ON it.material_id = m.id "
+        "JOIN categories c ON m.category_id = c.id "
+        "JOIN units u ON m.unit_id = u.id "
+        "WHERE d.doc_type = 'incoming' AND d.doc_date BETWEEN :start AND :end ";
+
+    if (supplierId > 0) {
+        sql += " AND s.id = :supId ";
+    }
+
+    sql += " ORDER BY d.doc_date DESC";
+
+    QSqlQuery query(db);
+    query.prepare(sql);
+    query.bindValue(":start", start);
+    query.bindValue(":end", end);
+    if (supplierId > 0) query.bindValue(":supId", supplierId);
+
+    if (query.exec()) {
+        ui->tw_report_main->setSortingEnabled(false);
+        double totalSum = 0.0;
+        int count = 0;
+
+        while (query.next()) {
+            int row = ui->tw_report_main->rowCount();
+            ui->tw_report_main->insertRow(row);
+
+            QDateTime date = query.value(0).toDateTime();
+            QString docNo  = query.value(1).toString();
+            QString sup    = query.value(2).toString();
+            QString mat    = query.value(3).toString();
+            QString cat    = query.value(4).toString();
+            double qty     = query.value(5).toDouble();
+            QString unit   = query.value(6).toString();
+            double price   = query.value(7).toDouble();
+            double sum     = query.value(8).toDouble();
+
+            totalSum += sum;
+            count++;
+
+            ui->tw_report_main->setItem(row, 0, new QTableWidgetItem(date.toString("dd.MM.yy HH:mm")));
+            ui->tw_report_main->setItem(row, 1, new QTableWidgetItem("№ " + docNo));
+            ui->tw_report_main->setItem(row, 2, new QTableWidgetItem(sup));
+            ui->tw_report_main->setItem(row, 3, new QTableWidgetItem(mat));
+            ui->tw_report_main->setItem(row, 4, new QTableWidgetItem(cat));
+
+            QTableWidgetItem *itemQty = new QTableWidgetItem(QString::number(qty, 'f', 3));
+            QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
+            QTableWidgetItem *itemSum = new QTableWidgetItem(QString::number(sum, 'f', 2));
+
+            itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemSum->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            ui->tw_report_main->setItem(row, 5, itemQty);
+            ui->tw_report_main->setItem(row, 6, new QTableWidgetItem(unit));
+            ui->tw_report_main->setItem(row, 7, itemPrice);
+            ui->tw_report_main->setItem(row, 8, itemSum);
+        }
+
+        ui->tw_report_main->setSortingEnabled(true);
+
+        ui->lb_report_summary->setText(QString("Всего закупок: %1 | Общая сумма за период: %2")
+                                           .arg(count)
+                                           .arg(QString::number(totalSum, 'f', 2)));
+
+    } else {
+        qCritical() << "SQL Error (Purchases):" << query.lastError().text();
+    }
+}
+
+void MainWidget::generateOutgoingReport()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    ui->tw_report_main->setColumnCount(9);
+    ui->tw_report_main->setHorizontalHeaderLabels({
+        "Дата", "Акт №", "Материал", "Категория", "Кол-во", "Ед. изм.", "Цена (себ.)", "Сумма", "Причина/Описание"
+    });
+
+    QHeaderView *header = ui->tw_report_main->horizontalHeader();
+    header->setSectionResizeMode(QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(2, QHeaderView::Stretch);
+    header->setSectionResizeMode(8, QHeaderView::Stretch);
+
+    QDateTime start = QDateTime(ui->de_start->date(), QTime(0, 0, 0));
+    QDateTime end = QDateTime(ui->de_end->date(), QTime(23, 59, 59));
+    int catId = ui->cb_filter_category->currentData().toInt();
+
+    QString sql =
+        "SELECT d.doc_date, d.id, m.name, c.name, ABS(it.quantity), u.name, it.price, ABS(it.quantity * it.price), d.description "
+        "FROM inventory_transactions it "
+        "JOIN documents d ON it.document_id = d.id "
+        "JOIN materials m ON it.material_id = m.id "
+        "JOIN categories c ON m.category_id = c.id "
+        "JOIN units u ON m.unit_id = u.id "
+        "WHERE d.doc_type = 'outgoing' AND d.doc_date BETWEEN :start AND :end ";
+
+    if (catId > 0) {
+        sql += " AND c.id = :catId ";
+    }
+
+    sql += " ORDER BY d.doc_date DESC";
+
+    QSqlQuery query(db);
+    query.prepare(sql);
+    query.bindValue(":start", start);
+    query.bindValue(":end", end);
+    if (catId > 0) query.bindValue(":catId", catId);
+
+    if (query.exec()) {
+        ui->tw_report_main->setSortingEnabled(false);
+        double totalLossMoney = 0.0;
+        int count = 0;
+
+        while (query.next()) {
+            int row = ui->tw_report_main->rowCount();
+            ui->tw_report_main->insertRow(row);
+
+            QDateTime date = query.value(0).toDateTime();
+            QString docId  = query.value(1).toString();
+            QString mat    = query.value(2).toString();
+            QString cat    = query.value(3).toString();
+            double qty     = query.value(4).toDouble();
+            QString unit   = query.value(5).toString();
+            double price   = query.value(6).toDouble();
+            double sum     = query.value(7).toDouble();
+            QString desc   = query.value(8).toString();
+
+            totalLossMoney += sum;
+            count++;
+
+            ui->tw_report_main->setItem(row, 0, new QTableWidgetItem(date.toString("dd.MM.yy HH:mm")));
+            ui->tw_report_main->setItem(row, 1, new QTableWidgetItem("№ " + docId));
+            ui->tw_report_main->setItem(row, 2, new QTableWidgetItem(mat));
+            ui->tw_report_main->setItem(row, 3, new QTableWidgetItem(cat));
+
+            QTableWidgetItem *itemQty = new QTableWidgetItem(QString::number(qty, 'f', 3));
+            QTableWidgetItem *itemPrice = new QTableWidgetItem(QString::number(price, 'f', 2));
+            QTableWidgetItem *itemSum = new QTableWidgetItem(QString::number(sum, 'f', 2));
+
+            itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            itemSum->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            itemSum->setForeground(QColor(150, 0, 0));
+
+            ui->tw_report_main->setItem(row, 4, itemQty);
+            ui->tw_report_main->setItem(row, 5, new QTableWidgetItem(unit));
+            ui->tw_report_main->setItem(row, 6, itemPrice);
+            ui->tw_report_main->setItem(row, 7, itemSum);
+            ui->tw_report_main->setItem(row, 8, new QTableWidgetItem(desc.isEmpty() ? "-" : desc));
+        }
+
+        ui->tw_report_main->setSortingEnabled(true);
+
+        ui->lb_report_summary->setText(QString("Всего операций списания: %1 | Общая себестоимость расхода: %2")
+                                           .arg(count)
+                                           .arg(QString::number(totalLossMoney, 'f', 2)));
+
+    } else {
+        qCritical() << "SQL Error (Outgoing Report):" << query.lastError().text();
+    }
+}
+
+void MainWidget::generateOSVReport()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    ui->tw_report_main->setColumnCount(7);
+    ui->tw_report_main->setHorizontalHeaderLabels({
+        "Материал", "Категория", "Нач. остаток", "Приход", "Расход", "Кон. остаток", "Ед. изм."
+    });
+
+    QHeaderView *header = ui->tw_report_main->horizontalHeader();
+    header->setSectionResizeMode(QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(0, QHeaderView::Stretch);
+
+    QDateTime start = QDateTime(ui->de_start->date(), QTime(0, 0, 0));
+    QDateTime end = QDateTime(ui->de_end->date(), QTime(23, 59, 59));
+    int catId = ui->cb_filter_category->currentData().toInt();
+
+    QString sql =
+        "SELECT m.name, c.name as cat_name, u.name as unit_name, "
+        "SUM(CASE WHEN d.doc_date < :start THEN it.quantity ELSE 0 END) as opening_bal, "
+        "SUM(CASE WHEN d.doc_date BETWEEN :start AND :end AND "
+        "   (d.doc_type = 'incoming' OR (d.doc_type = 'inventory' AND it.quantity > 0)) "
+        "   THEN it.quantity ELSE 0 END) as period_in, "
+        "SUM(CASE WHEN d.doc_date BETWEEN :start AND :end AND "
+        "   (d.doc_type = 'outgoing' OR (d.doc_type = 'inventory' AND it.quantity < 0)) "
+        "   THEN it.quantity ELSE 0 END) as period_out, "
+        "SUM(CASE WHEN d.doc_date <= :end THEN it.quantity ELSE 0 END) as closing_bal "
+        "FROM materials m "
+        "JOIN categories c ON m.category_id = c.id "
+        "JOIN units u ON m.unit_id = u.id "
+        "LEFT JOIN inventory_transactions it ON m.id = it.material_id "
+        "LEFT JOIN documents d ON it.document_id = d.id "
+        "WHERE (:catId = 0 OR c.id = :catId) "
+        "GROUP BY m.id, m.name, c.name, u.name "
+        "ORDER BY c.name, m.name";
+
+    QSqlQuery query(db);
+    query.prepare(sql);
+    query.bindValue(":start", start);
+    query.bindValue(":end", end);
+    query.bindValue(":catId", catId);
+
+    if (query.exec()) {
+        ui->tw_report_main->setSortingEnabled(false);
+        int rowsCount = 0;
+
+        while (query.next()) {
+            int row = ui->tw_report_main->rowCount();
+            ui->tw_report_main->insertRow(row);
+
+            double open  = query.value(3).toDouble();
+            double in    = query.value(4).toDouble();
+            double out   = qAbs(query.value(5).toDouble());
+            double close = query.value(6).toDouble();
+
+            if (qAbs(open) < 0.0001 && qAbs(in) < 0.0001 && qAbs(out) < 0.0001 && qAbs(close) < 0.0001) {
+                ui->tw_report_main->removeRow(row);
+                continue;
+            }
+
+            ui->tw_report_main->setItem(row, 0, new QTableWidgetItem(query.value(0).toString()));
+            ui->tw_report_main->setItem(row, 1, new QTableWidgetItem(query.value(1).toString()));
+
+            auto makeNum = [](double val) {
+                QTableWidgetItem *item = new QTableWidgetItem(QString::number(val, 'f', 3));
+                item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                return item;
+            };
+
+            ui->tw_report_main->setItem(row, 2, makeNum(open));
+            ui->tw_report_main->setItem(row, 3, makeNum(in));
+            ui->tw_report_main->setItem(row, 4, makeNum(out));
+            ui->tw_report_main->setItem(row, 5, makeNum(close));
+            ui->tw_report_main->setItem(row, 6, new QTableWidgetItem(query.value(2).toString()));
+
+            ui->tw_report_main->item(row, 3)->setForeground(QColor(0, 120, 0));
+            ui->tw_report_main->item(row, 4)->setForeground(QColor(150, 0, 0));
+
+            rowsCount++;
+        }
+
+        ui->tw_report_main->setSortingEnabled(true);
+        ui->lb_report_summary->setText(QString("Оборотно-сальдовая ведомость сформирована. Позиций с движением: %1").arg(rowsCount));
+        ui->lb_report_summary->setStyleSheet("color: black; font-weight: bold;");
+
+    } else {
+        qCritical() << "OSV Error:" << query.lastError().text();
+    }
+}
+
+void MainWidget::generateInventoryRegistryReport()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    ui->tw_report_main->setColumnCount(6);
+    ui->tw_report_main->setHorizontalHeaderLabels({
+        "№ Акта", "Дата проведения", "Ответственный", "Позиций", "Итог (грн/руб)", "Комментарий"
+    });
+
+    QHeaderView *header = ui->tw_report_main->horizontalHeader();
+    header->setSectionResizeMode(QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(5, QHeaderView::Stretch);
+
+    QDateTime start = QDateTime(ui->de_start->date(), QTime(0, 0, 0));
+    QDateTime end = QDateTime(ui->de_end->date(), QTime(23, 59, 59));
+
+    QString sql =
+        "SELECT d.id, d.doc_date, u.login, COUNT(it.id), "
+        "SUM(it.quantity * it.price) as money_diff, d.description "
+        "FROM documents d "
+        "JOIN users u ON d.user_id = u.id "
+        "LEFT JOIN inventory_transactions it ON d.id = it.document_id "
+        "WHERE d.doc_type = 'inventory' AND d.doc_date BETWEEN :start AND :end "
+        "GROUP BY d.id, d.doc_date, u.login, d.description "
+        "ORDER BY d.doc_date DESC";
+
+    QSqlQuery query(db);
+    query.prepare(sql);
+    query.bindValue(":start", start);
+    query.bindValue(":end", end);
+
+    if (query.exec()) {
+        ui->tw_report_main->setSortingEnabled(false);
+        double totalBalance = 0.0;
+        int docCount = 0;
+
+        while (query.next()) {
+            int row = ui->tw_report_main->rowCount();
+            ui->tw_report_main->insertRow(row);
+
+            int docId = query.value(0).toInt();
+            QDateTime date = query.value(1).toDateTime();
+            QString user = query.value(2).toString();
+            int itemsCount = query.value(3).toInt();
+            double diff = query.value(4).toDouble();
+            QString desc = query.value(5).toString();
+
+            totalBalance += diff;
+            docCount++;
+
+            ui->tw_report_main->setItem(row, 0, new QTableWidgetItem(QString::number(docId)));
+            ui->tw_report_main->setItem(row, 1, new QTableWidgetItem(date.toString("dd.MM.yyyy HH:mm")));
+            ui->tw_report_main->setItem(row, 2, new QTableWidgetItem(user));
+
+            QTableWidgetItem *itemCount = new QTableWidgetItem(QString::number(itemsCount));
+            itemCount->setTextAlignment(Qt::AlignCenter);
+            ui->tw_report_main->setItem(row, 3, itemCount);
+
+            QTableWidgetItem *itemDiff = new QTableWidgetItem(QString::number(diff, 'f', 2));
+            itemDiff->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+            if (diff < -0.001) itemDiff->setForeground(Qt::red);
+            else if (diff > 0.001) itemDiff->setForeground(QColor(0, 120, 0));
+
+            ui->tw_report_main->setItem(row, 4, itemDiff);
+            ui->tw_report_main->setItem(row, 5, new QTableWidgetItem(desc.isEmpty() ? "-" : desc));
+        }
+
+        ui->tw_report_main->setSortingEnabled(true);
+
+        QString summaryColor = (totalBalance >= 0) ? "green" : "red";
+        ui->lb_report_summary->setText(QString("Всего проверок: %1 | Общий финансовый результат: %2")
+                                           .arg(docCount)
+                                           .arg(QString::number(totalBalance, 'f', 2)));
+        ui->lb_report_summary->setStyleSheet(QString("font-weight: bold; color: %1;").arg(summaryColor));
+
+    } else {
+        qCritical() << "Inventory Registry Error:" << query.lastError().text();
+    }
+}
+
+void MainWidget::generateReport()
+{
+    if (ui->tw_report_main->rowCount() == 0) {
+        QMessageBox::warning(this, "Экспорт", "Сначала сформируйте отчет нажатием кнопки 'Применить'");
+        return;
+    }
+
+    QListWidgetItem *current = ui->list_report_types->currentItem();
+    if (!current) return;
+
+    QString cleanReportName = current->data(Qt::UserRole + 1).toString();
+
+    reportwidget *rw = new reportwidget(reportwidget::CustomReport, 0, userId, "ИП", this);
+    rw->setAttribute(Qt::WA_DeleteOnClose);
+
+    QString k1 = "", v1 = "";
+    QString k2 = "", v2 = "";
+    QString k3 = "", v3 = "";
+
+    if (ui->de_start->isEnabled()) {
+        k1 = "Период:";
+        v1 = ui->de_start->date().toString("dd.MM.yyyy") + " — " + ui->de_end->date().toString("dd.MM.yyyy");
+    }
+
+    if (ui->cb_filter_category->isEnabled() && ui->cb_filter_category->currentData().toInt() > 0) {
+        if (k1.isEmpty()) { k1 = "Категория:"; v1 = ui->cb_filter_category->currentText(); }
+        else { k2 = "Категория:"; v2 = ui->cb_filter_category->currentText(); }
+    }
+
+    if (ui->cb_filter_supplier->isEnabled() && ui->cb_filter_supplier->currentData().toInt() > 0) {
+        if (k1.isEmpty()) { k1 = "Поставщик:"; v1 = ui->cb_filter_supplier->currentText(); }
+        else if (k2.isEmpty()) { k2 = "Поставщик:"; v2 = ui->cb_filter_supplier->currentText(); }
+        else { k3 = "Поставщик:"; v3 = ui->cb_filter_supplier->currentText(); }
+    }
+
+    rw->setMetadata(k1, v1, k2, v2, k3, v3);
+    rw->copyDataFromTable(ui->tw_report_main, cleanReportName, ui->lb_report_summary->text());
+    rw->show();
+}
+
+void MainWidget::fillLogTypes()
+{
+    ui->cb_log_type->clear();
+    ui->cb_log_type->addItem("Все типы действий", "");
+    ui->cb_log_type->addItem("Авторизация", "Auth");
+    ui->cb_log_type->addItem("Поступления", "Incoming");
+    ui->cb_log_type->addItem("Списания", "Outgoing");
+    ui->cb_log_type->addItem("Инвентаризация", "Inventory");
+    ui->cb_log_type->addItem("Справочники", "RefData");
+    ui->cb_log_type->addItem("Упр. доступом", "UserAdmin");
+    ui->cb_log_type->addItem("Экспорт отчётов", "Export");
+}
+
+void MainWidget::fillLogUsers()
+{
+    ui->cb_log_user->clear();
+
+    ui->cb_log_user->addItem("Все пользователи", 0);
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery query(db);
+    if (query.exec("SELECT id, login FROM users ORDER BY login ASC")) {
+        while (query.next()) {
+            int userIdFromDb = query.value(0).toInt();
+            QString login = query.value(1).toString();
+
+            ui->cb_log_user->addItem(login, userIdFromDb);
+        }
+    } else {
+        qCritical() << "Ошибка загрузки списка пользователей для логов:" << query.lastError().text();
+    }
+
+    ui->cb_log_user->setCurrentIndex(0);
+}
+
+QDate MainWidget::getEarliestLogDate()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    QSqlQuery query(db);
+    query.exec("SELECT MIN(action_date) FROM logs");
+
+    if (query.next() && !query.value(0).isNull()) {
+        return query.value(0).toDateTime().date();
+    }
+    return QDate::currentDate();
+}
+
+void MainWidget::updateLogPeriod(int index)
+{
+    QDate today = QDate::currentDate();
+    QDate start;
+    QDate end = today;
+
+    ui->de_log_start->blockSignals(true);
+    ui->de_log_end->blockSignals(true);
+
+    ui->de_log_start->setMaximumDate(QDate(9999, 1, 1));
+    ui->de_log_end->setMinimumDate(QDate(1900, 1, 1));
+
+    switch (index) {
+    case 0:
+        start = getEarliestLogDate();
+        break;
+    case 1:
+        start = today.addDays(-(today.dayOfWeek() - 1));
+        break;
+    case 2:
+        start = QDate(today.year(), today.month(), 1);
+        break;
+    case 3:
+        start = QDate(today.year(), 1, 1);
+        break;
+    case 4:
+        ui->de_log_start->blockSignals(false);
+        ui->de_log_end->blockSignals(false);
+        return;
+    }
+
+    ui->de_log_end->setDate(end);
+    ui->de_log_start->setDate(start);
+
+    ui->de_log_end->setMinimumDate(start);
+    ui->de_log_start->setMaximumDate(end);
+
+    ui->de_log_start->blockSignals(false);
+    ui->de_log_end->blockSignals(false);
+
+    loadLogsTable();
+}
+
+void MainWidget::loadLogsTable()
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QDateTime startDateTime = QDateTime(ui->de_log_start->date(), QTime(0, 0, 0));
+    QDateTime endDateTime = QDateTime(ui->de_log_end->date(), QTime(23, 59, 59));
+    int selectedUserId = ui->cb_log_user->currentData().toInt();
+    QString selectedType = ui->cb_log_type->currentData().toString();
+    QString searchText = ui->le_log_search->text().trimmed();
+
+    QString sql =
+        "SELECT l.action_date, u.login, l.action_type, l.description "
+        "FROM logs l "
+        "LEFT JOIN users u ON l.user_id = u.id "
+        "WHERE l.action_date BETWEEN :start AND :end ";
+
+    if (selectedUserId > 0) sql += " AND l.user_id = :userId ";
+    if (!selectedType.isEmpty()) sql += " AND l.action_type = :type ";
+    if (!searchText.isEmpty()) sql += " AND l.description LIKE :search ";
+
+    sql += " ORDER BY l.action_date DESC LIMIT 1000";
+
+    QSqlQuery query(db);
+    query.prepare(sql);
+    query.bindValue(":start", startDateTime);
+    query.bindValue(":end", endDateTime);
+    if (selectedUserId > 0) query.bindValue(":userId", selectedUserId);
+    if (!selectedType.isEmpty()) query.bindValue(":type", selectedType);
+    if (!searchText.isEmpty()) query.bindValue(":search", "%" + searchText + "%");
+
+    if (query.exec()) {
+        ui->tw_logs->setRowCount(0);
+        ui->tw_logs->setColumnCount(4);
+        ui->tw_logs->setHorizontalHeaderLabels({"Дата и время", "Пользователь", "Действие", "Описание"});
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+
+        while (query.next()) {
+            int row = ui->tw_logs->rowCount();
+            ui->tw_logs->insertRow(row);
+
+            QDateTime dt = query.value(0).toDateTime();
+            QString user = query.value(1).toString();
+            QString type = query.value(2).toString();
+            QString desc = query.value(3).toString();
+
+            QTableWidgetItem *itemDate = new QTableWidgetItem(dt.toString("dd.MM.yyyy HH:mm:ss"));
+            QTableWidgetItem *itemUser = new QTableWidgetItem(user.isEmpty() ? "Удален" : user);
+            QTableWidgetItem *itemType = new QTableWidgetItem(type);
+            QTableWidgetItem *itemDesc = new QTableWidgetItem(desc);
+
+            int targetId = query.value("target_id").toInt();
+            itemDate->setData(Qt::UserRole, targetId);
+            itemDate->setData(Qt::UserRole + 1, type);
+
+            if (type == "Delete") {
+                itemType->setForeground(Qt::red);
+                itemType->setFont(QFont("Segoe UI", -1, QFont::Bold));
+            } else if (type == "Update") {
+                itemType->setForeground(QColor(255, 140, 0));
+            } else if (type == "Create" || type == "Incoming") {
+                itemType->setForeground(QColor(0, 120, 0));
+            } else if (type == "Auth") {
+                itemType->setForeground(Qt::blue);
+            }
+
+            ui->tw_logs->setItem(row, 0, itemDate);
+            ui->tw_logs->setItem(row, 1, itemUser);
+            ui->tw_logs->setItem(row, 2, itemType);
+            ui->tw_logs->setItem(row, 3, itemDesc);
+        }
+        ui->tw_logs->setSortingEnabled(true);
+
+        ui->lb_report_summary->setText(QString("Показано последних событий: %1").arg(ui->tw_logs->rowCount()));
+    } else {
+        qCritical() << "Ошибка загрузки логов:" << query.lastError().text();
+    }
+}
+
+void MainWidget::fillLogPeriods()
+{
+    ui->cb_log_period->clear();
+
+    ui->cb_log_period->addItem("За всё время");
+    ui->cb_log_period->addItem("За эту неделю");
+    ui->cb_log_period->addItem("За этот месяц");
+    ui->cb_log_period->addItem("За этот год");
+    ui->cb_log_period->addItem("Свой интервал");
+
+    ui->cb_log_period->setCurrentIndex(0);
+}
+
+void MainWidget::logAction(const QString &type, const QString &description, int targetId)
+{
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isOpen()) return;
+
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO logs (user_id, action_date, action_type, description, target_id) "
+                  "VALUES (:uid, :date, :type, :desc, :tid)");
+
+    query.bindValue(":uid", userId);
+    query.bindValue(":date", QDateTime::currentDateTime());
+    query.bindValue(":type", type);
+    query.bindValue(":desc", description);
+    query.bindValue(":tid", (targetId > 0) ? targetId : QVariant(QVariant::Int));
+
+    if (!query.exec()) {
+        qCritical() << "Критическая ошибка записи лога в БД:" << query.lastError().text();
+        qDebug() << "Попытка записи:" << type << "|" << description;
+    } else {
+        qDebug() << "Лог успешно записан:" << type << "->" << description;
+    }
+}
+
+void MainWidget::tw_logs_cellDoubleClicked(int row, int column)
+{
+    QTableWidgetItem *item = ui->tw_logs->item(row, 0);
+    int tid = item->data(Qt::UserRole).toInt();
+    QString type = item->data(Qt::UserRole + 1).toString();
+
+    if (tid <= 0) return;
+
+    if (type == "Incoming") {
+        ui->tabw_main->setCurrentIndex(2);
+        currentIncomingId = tid;
+        loadHistoryTable(Incoming);
+        loadDocDetails(Incoming);
+        if (ui->splitter_2->sizes().at(1) == 0) ui->splitter_2->setSizes({1, 1});
+    }
+    else if (type == "Inventory") {
+        ui->tabw_main->setCurrentIndex(2);
+        currentInventoryId = tid;
+        ui->sw_inventarization->setCurrentIndex(1);
+        ui->pb_inventoryDetailsBack->setVisible(true);
+        ui->widget->setVisible(false);
+        loadInventoryDetails();
+    }
 }

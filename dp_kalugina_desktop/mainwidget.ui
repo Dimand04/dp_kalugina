@@ -29,7 +29,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabw_main">
      <property name="currentIndex">
-      <number>3</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -1863,13 +1863,6 @@
                  </property>
                 </spacer>
                </item>
-               <item row="0" column="4">
-                <widget class="QComboBox" name="cb_warehouse_categories">
-                 <property name="sizeAdjustPolicy">
-                  <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
-                 </property>
-                </widget>
-               </item>
                <item row="0" column="1">
                 <widget class="QPushLabel" name="lb_change_layout">
                  <property name="sizePolicy">
@@ -1916,6 +1909,13 @@
                   </size>
                  </property>
                 </spacer>
+               </item>
+               <item row="0" column="4" colspan="2">
+                <widget class="QComboBox" name="cb_warehouse_categories">
+                 <property name="sizeAdjustPolicy">
+                  <enum>QComboBox::SizeAdjustPolicy::AdjustToContents</enum>
+                 </property>
+                </widget>
                </item>
               </layout>
              </widget>
@@ -2828,7 +2828,7 @@
        <item row="0" column="0">
         <widget class="QTabWidget" name="tabw_administration">
          <property name="currentIndex">
-          <number>0</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="tab_6">
           <attribute name="title">
@@ -3523,6 +3523,105 @@
           <attribute name="title">
            <string>Логирование</string>
           </attribute>
+          <layout class="QGridLayout" name="gridLayout_32">
+           <property name="leftMargin">
+            <number>3</number>
+           </property>
+           <property name="topMargin">
+            <number>3</number>
+           </property>
+           <property name="rightMargin">
+            <number>3</number>
+           </property>
+           <property name="bottomMargin">
+            <number>3</number>
+           </property>
+           <item row="0" column="4">
+            <widget class="QComboBox" name="cb_log_type"/>
+           </item>
+           <item row="0" column="2">
+            <widget class="QDateEdit" name="de_log_end">
+             <property name="maximumSize">
+              <size>
+               <width>100</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="calendarPopup">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLineEdit" name="le_log_search">
+             <property name="placeholderText">
+              <string>Поиск по описанию (№ документа, материал, ID)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QComboBox" name="cb_log_period"/>
+           </item>
+           <item row="0" column="5">
+            <widget class="QComboBox" name="cb_log_user"/>
+           </item>
+           <item row="0" column="1">
+            <widget class="QDateEdit" name="de_log_start">
+             <property name="maximumSize">
+              <size>
+               <width>100</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="calendarPopup">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="6">
+            <widget class="QPushButton" name="pb_log_reset">
+             <property name="text">
+              <string>Сбросить</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0" colspan="7">
+            <widget class="QTableWidget" name="tw_logs">
+             <property name="editTriggers">
+              <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+             </property>
+             <property name="verticalScrollMode">
+              <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
+             </property>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Дата и время</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Пользователь</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Действие</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Описание</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </widget>
        </item>

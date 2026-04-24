@@ -140,6 +140,21 @@ private slots:
     void fillReportFilters();
     void setupReportDates();
     void onReportTypeChanged();
+    void reportApply();
+    void generateStockReport();
+    void generatePurchasesReport();
+    void generateOutgoingReport();
+    void generateOSVReport();
+    void generateInventoryRegistryReport();
+    void generateReport();
+
+    void fillLogTypes();
+    void fillLogUsers();
+    void updateLogPeriod(int index);
+    void loadLogsTable();
+    void fillLogPeriods();
+    void logAction(const QString &type, const QString &description, int targetId = 0);
+    void tw_logs_cellDoubleClicked(int row, int column);
 
 private:
     Ui::MainWidget *ui;
@@ -162,6 +177,7 @@ private:
     bool m_isFirstIncomingOpen = true;
     bool m_isOutgoingDetailsOpened = false;
     bool m_isFirstOutgoingOpen = true;
+    bool m_isFirstLogsOpen = true;
 
     QDate getEarliestInventoryDate();
     QDate getEarliestDocDate(QString type);
@@ -171,5 +187,7 @@ private:
     DocUI getDocUI(DocMode mode);
 
     QMap<int, MaterialEntry> m_materialsCache;
+
+    QDate getEarliestLogDate();
 };
 #endif // MAINWIDGET_H
