@@ -37,6 +37,9 @@ public:
     explicit reportwidget(SourceType type, int targetId, int userId, QString orgName, QWidget *parent = nullptr);
     ~reportwidget();
 
+signals:
+    void fileSaved(QString type, QString path);
+
 public slots:
     void copyDataFromTable(QTableWidget *sourceTable, const QString &title, const QString &summary);
     void setMetadata(QString k1, QString v1, QString k2, QString v2, QString k3, QString v3);

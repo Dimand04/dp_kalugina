@@ -117,7 +117,20 @@ void edit_widget::saveData()
         query.bindValue(":catId", catId);
     }
 
-    if (!query.exec()) {
+    if(query.exec()) {
+        int finalId = (m_id == 0) ? query.lastInsertId().toInt() : m_id;
+
+        QString typeName;
+        if (m_mode == CategoryMode) typeName = "категория";
+        else if (m_mode == SupplierMode) typeName = "поставщик";
+        else if (m_mode == MaterialMode) typeName = "материал";
+
+        QString actionText = (m_id == 0) ? "Создан(а)" : "Изменен(а)";
+        QString logMessage = QString("%1 %2: '%3'").arg(actionText, typeName, name);
+
+        emit actionLogged("RefData", logMessage, finalId);
+    }
+    else {
         QMessageBox::critical(this, "Ошибка БД", query.lastError().text());
         return;
     }

@@ -20,6 +20,9 @@ public:
     explicit edit_role(const int& roleId, QWidget *parent = nullptr);
     ~edit_role();
 
+signals:
+    void actionLogged(const QString &type, const QString &description, int targetId);
+
 private slots:
     void buildPermissionsTree();
     void onPermissionChanged(QTreeWidgetItem *item, int column);

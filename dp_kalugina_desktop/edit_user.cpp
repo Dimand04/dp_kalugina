@@ -145,6 +145,8 @@ void edit_user::createUser()
         qDebug() << query.lastError().text();
     } else {
         if (db.commit()) {
+            emit actionLogged("UserAdmin", QString("Создан новый пользователь: '%1'").arg(login), newUserId);
+
             QMessageBox::information(this, "Успех", "Пользователь успешно создан!");
             this->accept();
         } else {
@@ -198,6 +200,8 @@ void edit_user::updateUser()
     }
 
     if (db.commit()) {
+        emit actionLogged("UserAdmin", QString("Обновлены данные пользователя: '%1' (ID: %2)").arg(login).arg(userId), userId);
+
         QMessageBox::information(this, "Успех", "Данные пользователя обновлены");
         this->accept();
     }

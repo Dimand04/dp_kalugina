@@ -243,6 +243,7 @@ void reportwidget::setMetadata(QString k1, QString v1, QString k2, QString v2, Q
     ui->lb_key_2->setVisible(!k2.isEmpty()); ui->lb_val_2->setVisible(!k2.isEmpty());
     ui->lb_key_3->setVisible(!k3.isEmpty()); ui->lb_val_3->setVisible(!k3.isEmpty());
 }
+
 void reportwidget::exportPdf()
 {
     QString sanitizedTitle = ui->lb_report_title->text().replace(" ", "_").replace("№", "N");
@@ -304,11 +305,17 @@ void reportwidget::exportPdf()
     html += "<div class='total'>" + ui->lb_total_info->text() + "</div>";
 
     if (m_type == IncomingDoc || m_type == OutgoingDoc || m_type == InventoryDoc) {
+        QString longLine = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                           "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+
         html += "<table class='signature-section'><tr>"
-                "<td class='signature-label'>Сдал:</td><td class='signature-line'>&nbsp;</td>"
-                "<td class='signature-spacer'></td>"
-                "<td class='signature-label'>Принял:</td><td class='signature-line'>&nbsp;</td>"
-                "</tr></table>";
+                "<td class='signature-label'>Сдал:</td>"
+                "<td class='signature-line'>" + longLine + "</td>"
+                             "<td class='signature-spacer'></td>"
+                             "<td class='signature-label'>Принял:</td>"
+                             "<td class='signature-line'>" + longLine + "</td>"
+                             "</tr></table>";
     }
 
     html += "<div class='gen-info'>Сформировал: " + m_userName + "<br>Дата: " + QDateTime::currentDateTime().toString("dd.MM.yyyy HH:mm:ss") + "</div>";
@@ -327,7 +334,8 @@ void reportwidget::exportPdf()
     printer.setPageMargins(QMarginsF(2, 2, 2, 2), QPageLayout::Millimeter);
 
     doc.print(&printer);
-    QMessageBox::information(this, "Успех", "PDF сохранён с минимальными отступами.");
+    emit fileSaved("PDF", fileName);
+    QMessageBox::information(this, "Успех", "PDF файл сохранён.");
 }
 
 void reportwidget::exportCsv()
@@ -374,6 +382,7 @@ void reportwidget::exportCsv()
     out << "Сформировал: " << m_userName << sep << "Дата: " << QDateTime::currentDateTime().toString("dd.MM.yyyy HH:mm") << "\n";
 
     file.close();
+    emit fileSaved("CSV", fileName);
     QMessageBox::information(this, "Успех", "Отчёт успешно экспортирован в CSV (Excel).");
 }
 
@@ -440,6 +449,7 @@ void reportwidget::exportTxt()
     out << "Дата печати: " << QDateTime::currentDateTime().toString("dd.MM.yyyy HH:mm:ss") << "\n";
 
     file.close();
+    emit fileSaved("TXT", fileName);
     QMessageBox::information(this, "Успех", "Отчёт сохранён в TXT");
 }
 

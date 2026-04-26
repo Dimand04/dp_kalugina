@@ -24,6 +24,9 @@ public:
     explicit edit_widget(Mode mode, int id = 0, QWidget *parent = nullptr);
     ~edit_widget();
 
+signals:
+    void actionLogged(const QString &type, const QString &description, int targetId);
+
 private slots:
     void loadData();
     void saveData();

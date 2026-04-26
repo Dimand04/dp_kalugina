@@ -19,6 +19,9 @@ public:
     explicit edit_user(const int& userId, QWidget *parent = nullptr);
     ~edit_user();
 
+signals:
+    void actionLogged(const QString &type, const QString &description, int targetId);
+
 private slots:
     void loadRoles();
     void checkId();

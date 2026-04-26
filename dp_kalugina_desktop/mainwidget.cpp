@@ -15,12 +15,13 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     ui->setupUi(this);
 
     // --- 1. СИСТЕМНЫЕ ФУНКЦИИ И ВЫХОД ---
+    logAction("Auth", "Пользователь вошёл в систему");
     adminFunction();
 
     QToolButton *logoutBtn = new QToolButton(this);
     logoutBtn->setText("Выход");
     logoutBtn->setAutoRaise(true);
-    ui->tabw_main->setCornerWidget(logoutBtn, Qt::TopRightCorner); //
+    ui->tabw_main->setCornerWidget(logoutBtn, Qt::TopRightCorner);
 
     connect(logoutBtn, &QToolButton::clicked, this, &MainWidget::logout);
 
@@ -470,6 +471,9 @@ void MainWidget::show_edit_user()
 {
     edit_user eu(currentUserId);
     eu.setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint);
+
+    connect(&eu, &edit_user::actionLogged, this, &MainWidget::logAction);
+
     if (eu.exec() == QDialog::Accepted) {
         load_users_table();
     } else {
@@ -537,6 +541,9 @@ void MainWidget::show_edit_role()
 {
     edit_role er(currentRoleId);
     er.setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint);
+
+    connect(&er, &edit_role::actionLogged, this, &MainWidget::logAction);
+
     if (er.exec() == QDialog::Accepted) {
         load_roles_table();
         loadRoles();
@@ -631,6 +638,8 @@ void MainWidget::show_edit_category()
 {
     edit_widget ew(edit_widget::CategoryMode, currentCategoryId, this);
 
+    connect(&ew, &edit_widget::actionLogged, this, &MainWidget::logAction);
+
     if (ew.exec() == QDialog::Accepted) {
         load_categories_table();
     } else {
@@ -698,6 +707,8 @@ void MainWidget::show_edit_material()
 {
     edit_widget ew(edit_widget::MaterialMode, currentMaterialId, this);
 
+    connect(&ew, &edit_widget::actionLogged, this, &MainWidget::logAction);
+
     if (ew.exec() == QDialog::Accepted) {
         load_materials_table();
     } else {
@@ -764,6 +775,8 @@ void MainWidget::filter_suppliers(const QString &searchText)
 void MainWidget::show_edit_supplier()
 {
     edit_widget ew(edit_widget::SupplierMode, currentSupplierId, this);
+
+    connect(&ew, &edit_widget::actionLogged, this, &MainWidget::logAction);
 
     if (ew.exec() == QDialog::Accepted) {
         load_suppliers_table();
@@ -1087,6 +1100,12 @@ void MainWidget::reportBaches()
 
     reportwidget *rw = new reportwidget(reportwidget::MaterialBatches, currentMaterialBatchesId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
+        QString logDesc = QString("Экспорт документа в %1. Путь: %2").arg(type, path);
+        logAction("Export", logDesc, currentMaterialBatchesId);
+    });
+
     rw->exec();
 }
 
@@ -1099,6 +1118,12 @@ void MainWidget::reportMovements()
 
     reportwidget *rw = new reportwidget(reportwidget::MaterialHistory, currentMaterialBatchesId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
+        QString logDesc = QString("Экспорт документа в %1. Путь: %2").arg(type, path);
+        logAction("Export", logDesc, currentMaterialBatchesId);
+    });
+
     rw->show();
 }
 
@@ -1674,6 +1699,9 @@ void MainWidget::saveInventory()
     }
 
     if (db.commit()) {
+        logAction("Inventory", QString("Завершена инвентаризация №%12")
+                                   .arg(docId));
+
         QMessageBox::information(this, "Успех", "Инвентаризация успешно проведена!");
 
         closeInventoryWorkArea();
@@ -1692,6 +1720,12 @@ void MainWidget::reportInventory()
 
     reportwidget *rw = new reportwidget(reportwidget::InventoryDoc, currentInventoryId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
+        QString logDesc = QString("Экспорт документа в %1. Путь: %2").arg(type, path);
+        logAction("Export", logDesc, currentInventoryId);
+    });
+
     rw->show();
 }
 
@@ -2452,6 +2486,11 @@ void MainWidget::saveIncoming()
     }
 
     if (db.commit()) {
+        logAction("Incoming", QString("Проведено поступление №%1 от поставщика '%2' на сумму %3")
+                                  .arg(docId)
+                                  .arg(ui->cb_new_incoming_supplier->currentText())
+                                  .arg(ui->lb_new_incoming_total_value->text()), docId);
+
         QMessageBox::information(this, "Успех", "Поступление успешно проведено.");
 
         closeDocWorkArea(Incoming);
@@ -2572,6 +2611,11 @@ void MainWidget::saveOutgoing()
     }
 
     if (db.commit()) {
+        logAction("Outgoing", QString("Оформлено списание №%1. Причина: %2. Сумма: %3")
+                                  .arg(docId)
+                                  .arg(ui->le_new_outgoing_description->text())
+                                  .arg(ui->lb_new_outgoing_total_value->text()), docId);
+
         QMessageBox::information(this, "Успех", "Списание успешно проведено.");
         closeDocWorkArea(Outgoing);
         loadWarehouseTable();
@@ -2589,6 +2633,12 @@ void MainWidget::reportIncoming()
 
     reportwidget *rw = new reportwidget(reportwidget::IncomingDoc, currentIncomingId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
+        QString logDesc = QString("Экспорт документа в %1. Путь: %2").arg(type, path);
+        logAction("Export", logDesc, currentIncomingId);
+    });
+
     rw->exec();
 }
 
@@ -2601,6 +2651,12 @@ void MainWidget::reportOutgoing()
 
     reportwidget *rw = new reportwidget(reportwidget::OutgoingDoc, currentOutgoingId, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
+        QString logDesc = QString("Экспорт документа в %1. Путь: %2").arg(type, path);
+        logAction("Export", logDesc, currentOutgoingId);
+    });
+
     rw->exec();
 }
 
@@ -3234,6 +3290,14 @@ void MainWidget::generateReport()
     reportwidget *rw = new reportwidget(reportwidget::CustomReport, 0, userId, "ИП", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
+    connect(rw, &reportwidget::fileSaved, this, [this, cleanReportName](QString type, QString path){
+        QString logDesc = QString("Экспорт отчета '%1' в формат %2. Путь: %3")
+                              .arg(cleanReportName)
+                              .arg(type)
+                              .arg(path);
+        logAction("Export", logDesc, 0);
+    });
+
     QString k1 = "", v1 = "";
     QString k2 = "", v2 = "";
     QString k3 = "", v3 = "";
@@ -3363,7 +3427,7 @@ void MainWidget::loadLogsTable()
     QString searchText = ui->le_log_search->text().trimmed();
 
     QString sql =
-        "SELECT l.action_date, u.login, l.action_type, l.description "
+        "SELECT l.action_date, u.login, l.action_type, l.description, l.target_id "
         "FROM logs l "
         "LEFT JOIN users u ON l.user_id = u.id "
         "WHERE l.action_date BETWEEN :start AND :end ";
@@ -3386,10 +3450,8 @@ void MainWidget::loadLogsTable()
         ui->tw_logs->setRowCount(0);
         ui->tw_logs->setColumnCount(4);
         ui->tw_logs->setHorizontalHeaderLabels({"Дата и время", "Пользователь", "Действие", "Описание"});
-        ui->tw_logs->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-        ui->tw_logs->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-        ui->tw_logs->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-        ui->tw_logs->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+
+        ui->tw_logs->setSortingEnabled(false);
 
         while (query.next()) {
             int row = ui->tw_logs->rowCount();
@@ -3399,13 +3461,12 @@ void MainWidget::loadLogsTable()
             QString user = query.value(1).toString();
             QString type = query.value(2).toString();
             QString desc = query.value(3).toString();
+            int targetId = query.value(4).toInt();
 
             QTableWidgetItem *itemDate = new QTableWidgetItem(dt.toString("dd.MM.yyyy HH:mm:ss"));
             QTableWidgetItem *itemUser = new QTableWidgetItem(user.isEmpty() ? "Удален" : user);
             QTableWidgetItem *itemType = new QTableWidgetItem(type);
-            QTableWidgetItem *itemDesc = new QTableWidgetItem(desc);
 
-            int targetId = query.value("target_id").toInt();
             itemDate->setData(Qt::UserRole, targetId);
             itemDate->setData(Qt::UserRole + 1, type);
 
@@ -3414,7 +3475,7 @@ void MainWidget::loadLogsTable()
                 itemType->setFont(QFont("Segoe UI", -1, QFont::Bold));
             } else if (type == "Update") {
                 itemType->setForeground(QColor(255, 140, 0));
-            } else if (type == "Create" || type == "Incoming") {
+            } else if (type == "Create" || type == "Incoming" || type == "Inventory") {
                 itemType->setForeground(QColor(0, 120, 0));
             } else if (type == "Auth") {
                 itemType->setForeground(Qt::blue);
@@ -3423,13 +3484,28 @@ void MainWidget::loadLogsTable()
             ui->tw_logs->setItem(row, 0, itemDate);
             ui->tw_logs->setItem(row, 1, itemUser);
             ui->tw_logs->setItem(row, 2, itemType);
-            ui->tw_logs->setItem(row, 3, itemDesc);
-        }
-        ui->tw_logs->setSortingEnabled(true);
 
+            QTableWidgetItem *itemDesc = new QTableWidgetItem(desc);
+            itemDesc->setForeground(Qt::transparent);
+            ui->tw_logs->setItem(row, 3, itemDesc);
+
+            QLineEdit *readOnlyEditor = new QLineEdit(desc);
+            readOnlyEditor->setReadOnly(true);
+            readOnlyEditor->setFrame(false);
+            readOnlyEditor->setStyleSheet("background: transparent; border: none; padding-left: 5px; color: palette(text);");
+
+            readOnlyEditor->setFocusPolicy(Qt::ClickFocus);
+
+            ui->tw_logs->setCellWidget(row, 3, readOnlyEditor);
+        }
+
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        ui->tw_logs->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+
+        ui->tw_logs->setSortingEnabled(true);
         ui->lb_report_summary->setText(QString("Показано последних событий: %1").arg(ui->tw_logs->rowCount()));
-    } else {
-        qCritical() << "Ошибка загрузки логов:" << query.lastError().text();
     }
 }
 

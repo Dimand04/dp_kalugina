@@ -236,6 +236,8 @@ void edit_role::createRole()
     }
 
     if (db.commit()) {
+        emit actionLogged("UserAdmin", QString("Создана новая роль: '%1'").arg(roleName), newRoleId);
+
         QMessageBox::information(this, "Успех", "Роль успешно создана!");
         this->accept();
     } else {
@@ -261,6 +263,42 @@ void edit_role::updateRole()
     QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
     if (!db.isValid() || !db.isOpen()) return;
 
+    QString oldName;
+    QSet<int> oldPermissions;
+
+    QSqlQuery roleQuery(db);
+    roleQuery.prepare("SELECT name FROM roles WHERE id = :id");
+    roleQuery.bindValue(":id", roleId);
+    if (roleQuery.exec() && roleQuery.next()) {
+        oldName = roleQuery.value(0).toString();
+    }
+
+    QSqlQuery permsQuery(db);
+    permsQuery.prepare("SELECT permission_id FROM role_permissions WHERE role_id = :id");
+    permsQuery.bindValue(":id", roleId);
+    if (permsQuery.exec()) {
+        while (permsQuery.next()) {
+            oldPermissions.insert(permsQuery.value(0).toInt());
+        }
+    }
+
+    QSet<int> newPermissions;
+    QTreeWidgetItemIterator it(ui->treeWidget);
+    while (*it) {
+        if ((*it)->checkState(0) == Qt::Checked) {
+            newPermissions.insert((*it)->data(0, Qt::UserRole).toInt());
+        }
+        ++it;
+    }
+
+    bool nameChanged = (oldName != newName);
+    bool rightsChanged = (oldPermissions != newPermissions);
+
+    if (!nameChanged && !rightsChanged) {
+        this->reject();
+        return;
+    }
+
     db.transaction();
     QSqlQuery query(db);
 
@@ -273,27 +311,42 @@ void edit_role::updateRole()
         return;
     }
 
-    QSqlQuery delQuery(db);
-    delQuery.prepare("DELETE FROM role_permissions WHERE role_id = :roleId");
-    delQuery.bindValue(":roleId", roleId);
-    delQuery.exec();
+    if (rightsChanged) {
+        QSqlQuery delQuery(db);
+        delQuery.prepare("DELETE FROM role_permissions WHERE role_id = :roleId");
+        delQuery.bindValue(":roleId", roleId);
+        delQuery.exec();
 
-    QTreeWidgetItemIterator it(ui->treeWidget);
-    while (*it) {
-        QTreeWidgetItem *item = *it;
-        if (item->checkState(0) == Qt::Checked) {
-            int permId = item->data(0, Qt::UserRole).toInt();
+        for (int permId : newPermissions) {
             QSqlQuery insQuery(db);
             insQuery.prepare("INSERT INTO role_permissions (role_id, permission_id) VALUES (:rid, :pid)");
             insQuery.bindValue(":rid", roleId);
             insQuery.bindValue(":pid", permId);
             insQuery.exec();
         }
-        ++it;
     }
 
     if (db.commit()) {
+        QString logDescription;
+
+        if (nameChanged && rightsChanged) {
+            logDescription = QString("Роль '%1' переименована в '%2'. Права доступа изменены.")
+                                 .arg(oldName, newName);
+        }
+        else if (nameChanged) {
+            logDescription = QString("Роль '%1' переименована в '%2' (права не менялись).")
+                                 .arg(oldName, newName);
+        }
+        else if (rightsChanged) {
+            logDescription = QString("Обновлены права доступа роли '%1'.")
+                                 .arg(newName);
+        }
+
+        emit actionLogged("UserAdmin", logDescription, roleId);
+
         QMessageBox::information(this, "Успех", "Данные роли обновлены!");
         this->accept();
+    } else {
+        db.rollback();
     }
 }
