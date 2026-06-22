@@ -1,4 +1,4 @@
-#include "reportwidget.h"
+ #include "reportwidget.h"
 #include "ui_reportwidget.h"
 
 reportwidget::reportwidget(SourceType type, int targetId, int userId, QString orgName, QWidget *parent)

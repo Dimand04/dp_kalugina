@@ -1,4 +1,4 @@
-QT       += core gui sql printsupport svg
+QT       += core gui sql printsupport svg network httpserver
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -13,6 +13,7 @@ SOURCES += \
     edit_role.cpp \
     edit_user.cpp \
     edit_widget.cpp \
+    localapiserver.cpp \
     main.cpp \
     mainwidget.cpp \
     qpushlabel.cpp \
@@ -23,6 +24,7 @@ HEADERS += \
     edit_role.h \
     edit_user.h \
     edit_widget.h \
+    localapiserver.h \
     mainwidget.h \
     qpushlabel.h \
     reportwidget.h

@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <QApplication>
 #include "authorizationwindow.h"
+#include "localapiserver.h"
 
 bool setupDatabaseConnection() {
     QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL", "db_dp_kalugina");
@@ -25,6 +26,8 @@ int main(int argc, char *argv[])
 
     if (!setupDatabaseConnection())
         return 1;
+
+    LocalApiServer *apiServer = new LocalApiServer(54321, &a);
 
     AuthorizationWindow auth;
     if (auth.exec() == QDialog::Accepted) {

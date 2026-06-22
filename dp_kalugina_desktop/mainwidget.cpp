@@ -1098,7 +1098,7 @@ void MainWidget::reportBaches()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::MaterialBatches, currentMaterialBatchesId, userId, "ИП", this);
+    reportwidget *rw = new reportwidget(reportwidget::MaterialBatches, currentMaterialBatchesId, userId, "ООО 'К24'", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
     connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
@@ -1116,7 +1116,7 @@ void MainWidget::reportMovements()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::MaterialHistory, currentMaterialBatchesId, userId, "ИП", this);
+    reportwidget *rw = new reportwidget(reportwidget::MaterialHistory, currentMaterialBatchesId, userId, "ООО 'К24'", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
     connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
@@ -1718,7 +1718,7 @@ void MainWidget::reportInventory()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::InventoryDoc, currentInventoryId, userId, "ИП", this);
+    reportwidget *rw = new reportwidget(reportwidget::InventoryDoc, currentInventoryId, userId, "ООО 'К24'", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
     connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
@@ -2631,7 +2631,7 @@ void MainWidget::reportIncoming()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::IncomingDoc, currentIncomingId, userId, "ИП", this);
+    reportwidget *rw = new reportwidget(reportwidget::IncomingDoc, currentIncomingId, userId, "ООО 'К24'", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
     connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
@@ -2649,7 +2649,7 @@ void MainWidget::reportOutgoing()
         return;
     }
 
-    reportwidget *rw = new reportwidget(reportwidget::OutgoingDoc, currentOutgoingId, userId, "ИП", this);
+    reportwidget *rw = new reportwidget(reportwidget::OutgoingDoc, currentOutgoingId, userId, "ООО 'К24'", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
     connect(rw, &reportwidget::fileSaved, this, [this](QString type, QString path){
@@ -3287,7 +3287,7 @@ void MainWidget::generateReport()
 
     QString cleanReportName = current->data(Qt::UserRole + 1).toString();
 
-    reportwidget *rw = new reportwidget(reportwidget::CustomReport, 0, userId, "ИП", this);
+    reportwidget *rw = new reportwidget(reportwidget::CustomReport, 0, userId, "ООО 'К24'", this);
     rw->setAttribute(Qt::WA_DeleteOnClose);
 
     connect(rw, &reportwidget::fileSaved, this, [this, cleanReportName](QString type, QString path){
