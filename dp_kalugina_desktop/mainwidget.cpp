@@ -5,6 +5,7 @@
 #include "edit_user.h"
 #include "edit_widget.h"
 #include "reportwidget.h"
+#include <QSet>
 
 MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     : QWidget(parent)
@@ -13,6 +14,8 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
     , userRole(userRole)
 {
     ui->setupUi(this);
+
+    setWindowTitle("Складучёт V1.0");
 
     // --- 1. СИСТЕМНЫЕ ФУНКЦИИ И ВЫХОД ---
     logAction("Auth", "Пользователь вошёл в систему");
@@ -210,6 +213,12 @@ MainWidget::MainWidget(int userId, int userRole, QWidget *parent)
         ui->cb_log_period->setCurrentIndex(0);
     });
 
+    connect(ui->pb_admin_deleteCategory, &QPushButton::clicked, this, &MainWidget::deleteCategory);
+    connect(ui->pb_admin_deleteMaterial, &QPushButton::clicked, this, &MainWidget::deleteMaterial);
+    connect(ui->pb_admin_deleteSupplier, &QPushButton::clicked, this, &MainWidget::deleteSupplier);
+    connect(ui->pb_admin_deleteRole, &QPushButton::clicked, this, &MainWidget::deleteRole);
+    connect(ui->pb_admin_deleteUser, &QPushButton::clicked, this, &MainWidget::deleteUser);
+
     // --- 8. НАСТРОЙКА ГЕОМЕТРИИ И ФИЛЬТРОВ СОБЫТИЙ ---
     auto setupHeader = [](QTableWidget* tw) {
         tw->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -246,11 +255,55 @@ MainWidget::~MainWidget()
 
 void MainWidget::adminFunction()
 {
-    if (userRole == 1) {
-        ui->tabw_main->insertTab(4, ui->tab_5, "Администрирование");
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery query(db);
+    query.prepare("SELECT p.slug FROM role_permissions rp "
+                  "JOIN permissions p ON rp.permission_id = p.id "
+                  "WHERE rp.role_id = :roleId");
+    query.bindValue(":roleId", userRole);
+
+    QSet<QString> perms;
+    if (query.exec()) {
+        while (query.next()) {
+            perms.insert(query.value(0).toString());
+        }
     }
-    else {
-        ui->tabw_main->removeTab(4);
+
+    ui->tabw_main->setTabVisible(0, perms.contains("tab_incoming"));
+    ui->tabw_main->setTabVisible(1, perms.contains("tab_outgoing"));
+    ui->tabw_main->setTabVisible(2, perms.contains("tab_warehouse"));
+    ui->tabw_main->setTabVisible(3, perms.contains("tab_reports"));
+    ui->tabw_main->setTabVisible(4, perms.contains("tab_admin"));
+
+    ui->pb_incoming_add->setVisible(perms.contains("act_inc_add"));
+    ui->pb_outgoing_add->setVisible(perms.contains("act_out_add"));
+
+    ui->pb_inventorization->setVisible(perms.contains("act_inv_do"));
+
+    bool canViewReports = perms.contains("act_rep_view");
+    ui->pb_report_apply->setVisible(canViewReports);
+    ui->pb_generate_report->setVisible(canViewReports);
+
+    if (perms.contains("tab_admin")) {
+        ui->tabw_administration->setTabVisible(0, perms.contains("act_adm_refs"));
+
+        bool canManageAccess = perms.contains("act_adm_users") || perms.contains("act_adm_roles");
+        ui->tabw_administration->setTabVisible(1, canManageAccess);
+
+        ui->pb_admin_addRole->setVisible(perms.contains("act_adm_roles"));
+        ui->pb_admin_editRole->setVisible(perms.contains("act_adm_roles"));
+        ui->pb_admin_deleteRole->setVisible(perms.contains("act_adm_roles"));
+
+        ui->tabw_administration->setTabVisible(2, perms.contains("act_adm_users"));
+    }
+
+    for (int i = 0; i < ui->tabw_main->count(); ++i) {
+        if (ui->tabw_main->isTabVisible(i)) {
+            ui->tabw_main->setCurrentIndex(i);
+            break;
+        }
     }
 }
 
@@ -503,6 +556,84 @@ void MainWidget::reset_users_ui()
     ui->tw_admin_users->clearSelection();
 }
 
+void MainWidget::deleteUser()
+{
+    if (currentUserId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Выберите пользователя для удаления!");
+        return;
+    }
+
+    if (currentUserId == userId) {
+        QMessageBox::warning(this, "Отказ", "Вы не можете удалить собственную учетную запись, пока авторизованы в системе!");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery checkQuery(db);
+    checkQuery.prepare("SELECT COUNT(*) FROM documents WHERE user_id = :uid");
+    checkQuery.bindValue(":uid", currentUserId);
+
+    if (checkQuery.exec() && checkQuery.next()) {
+        int docsCount = checkQuery.value(0).toInt();
+        if (docsCount > 0) {
+            QMessageBox::warning(this, "Удаление запрещено",
+                                 "Невозможно удалить пользователя, так как он является автором документов (поступлений, списаний или инвентаризаций).\n\n"
+                                 "Вместо удаления рекомендуется просто изменить его логин/пароль или перевести в роль с ограниченными правами, "
+                                 "чтобы сохранить целостность финансовой истории склада.");
+            return;
+        }
+    } else {
+        qCritical() << "Ошибка проверки документов пользователя:" << checkQuery.lastError().text();
+        return;
+    }
+
+    QString userLogin = "Неизвестный пользователь";
+    QSqlQuery nameQuery(db);
+    nameQuery.prepare("SELECT login FROM users WHERE id = :uid");
+    nameQuery.bindValue(":uid", currentUserId);
+    if (nameQuery.exec() && nameQuery.next()) {
+        userLogin = nameQuery.value(0).toString();
+    }
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  QString("Вы действительно хотите безвозвратно удалить пользователя '%1'?").arg(userLogin),
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        db.transaction();
+
+        QSqlQuery deleteAuth(db);
+        deleteAuth.prepare("DELETE FROM auth WHERE id = :uid");
+        deleteAuth.bindValue(":uid", currentUserId);
+        deleteAuth.exec();
+
+        QSqlQuery deleteUser(db);
+        deleteUser.prepare("DELETE FROM users WHERE id = :uid");
+        deleteUser.bindValue(":uid", currentUserId);
+
+        if (deleteUser.exec()) {
+            db.commit();
+
+            logAction("Delete", QString("Удален пользователь системы: %1").arg(userLogin), currentUserId);
+
+            QMessageBox::information(this, "Успех", "Пользователь успешно удален.");
+
+            reset_users_ui();
+            load_users_table();
+        } else {
+            db.rollback();
+            qCritical() << "Ошибка удаления пользователя:" << deleteUser.lastError().text();
+
+            QMessageBox::critical(this, "Ошибка",
+                                  "Не удалось удалить пользователя.\n"
+                                  "В базе данных остались жесткие системные связи (например, записи в журнале действий).");
+        }
+    }
+}
+
 void MainWidget::load_roles_table()
 {
     reset_roles_ui();
@@ -591,6 +722,83 @@ void MainWidget::loadRoles()
     }
 }
 
+void MainWidget::deleteRole()
+{
+    if (currentRoleId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Выберите роль для удаления!");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery checkQuery(db);
+    checkQuery.prepare("SELECT login FROM users WHERE role_id = :roleId");
+    checkQuery.bindValue(":roleId", currentRoleId);
+
+    if (checkQuery.exec()) {
+        QStringList linkedUsers;
+        while (checkQuery.next()) {
+            linkedUsers << checkQuery.value(0).toString();
+        }
+
+        if (!linkedUsers.isEmpty()) {
+            QString msg = "Невозможно удалить роль, так как она назначена следующим пользователям:\n\n";
+
+            int displayCount = qMin(linkedUsers.size(), 5);
+            for (int i = 0; i < displayCount; ++i) {
+                msg += "- " + linkedUsers[i] + "\n";
+            }
+            if (linkedUsers.size() > 5) {
+                msg += QString("...и еще %1 шт.\n").arg(linkedUsers.size() - 5);
+            }
+            msg += "\nПожалуйста, измените роль у этих пользователей перед удалением (например, переведите их в группу 'Менеджеры').";
+
+            QMessageBox::warning(this, "Удаление запрещено", msg);
+            return;
+        }
+    } else {
+        qCritical() << "Ошибка проверки связей пользователей с ролью:" << checkQuery.lastError().text();
+        return;
+    }
+
+    QString roleName = "Неизвестная роль";
+    QSqlQuery nameQuery(db);
+    nameQuery.prepare("SELECT name FROM roles WHERE id = :roleId");
+    nameQuery.bindValue(":roleId", currentRoleId);
+    if (nameQuery.exec() && nameQuery.next()) {
+        roleName = nameQuery.value(0).toString();
+    }
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  QString("Вы действительно хотите безвозвратно удалить системную роль '%1'?\n\n"
+                                          "Внимание: Все права доступа (связи с модулями), привязанные к этой роли, "
+                                          "также будут удалены автоматически!").arg(roleName),
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QSqlQuery deleteQuery(db);
+        deleteQuery.prepare("DELETE FROM roles WHERE id = :roleId");
+        deleteQuery.bindValue(":roleId", currentRoleId);
+
+        if (deleteQuery.exec()) {
+            logAction("Delete", QString("Удалена системная роль из справочника: %1").arg(roleName), currentRoleId);
+
+            QMessageBox::information(this, "Успех", "Роль и связанные с ней права успешно удалены.");
+
+            reset_roles_ui();
+
+            load_roles_table();
+
+            loadRoles();
+        } else {
+            qCritical() << "Ошибка удаления роли:" << deleteQuery.lastError().text();
+            QMessageBox::critical(this, "Ошибка", "Не удалось удалить роль.\nВозможно, это встроенная системная роль.");
+        }
+    }
+}
+
 void MainWidget::load_categories_table()
 {
     reset_categories_ui();
@@ -657,6 +865,78 @@ void MainWidget::table_categories_clicked(int row)
         ui->pb_admin_editCategory->setEnabled(true);
         ui->pb_admin_deleteCategory->setEnabled(true);
         qDebug()<<"ID категории: "<<currentCategoryId;
+    }
+}
+
+void MainWidget::deleteCategory()
+{
+    if (currentCategoryId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Выберите категорию для удаления!");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery checkQuery(db);
+    checkQuery.prepare("SELECT name FROM materials WHERE category_id = :catId");
+    checkQuery.bindValue(":catId", currentCategoryId);
+
+    if (checkQuery.exec()) {
+        QStringList linkedMaterials;
+        while (checkQuery.next()) {
+            linkedMaterials << checkQuery.value(0).toString();
+        }
+
+        if (!linkedMaterials.isEmpty()) {
+            QString msg = "Невозможно удалить категорию, так как к ней привязаны следующие материалы:\n\n";
+
+            int displayCount = qMin(linkedMaterials.size(), 5);
+            for (int i = 0; i < displayCount; ++i) {
+                msg += "- " + linkedMaterials[i] + "\n";
+            }
+            if (linkedMaterials.size() > 5) {
+                msg += QString("...и еще %1 шт.\n").arg(linkedMaterials.size() - 5);
+            }
+            msg += "\nПожалуйста, измените категорию у этих материалов перед удалением.";
+
+            QMessageBox::warning(this, "Удаление запрещено", msg);
+            return;
+        }
+    } else {
+        qCritical() << "Ошибка проверки связей категории:" << checkQuery.lastError().text();
+        return;
+    }
+
+    QString catName = "Неизвестная категория";
+    QSqlQuery nameQuery(db);
+    nameQuery.prepare("SELECT name FROM categories WHERE id = :catId");
+    nameQuery.bindValue(":catId", currentCategoryId);
+    if (nameQuery.exec() && nameQuery.next()) {
+        catName = nameQuery.value(0).toString();
+    }
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  QString("Вы действительно хотите безвозвратно удалить категорию '%1'?").arg(catName),
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QSqlQuery deleteQuery(db);
+        deleteQuery.prepare("DELETE FROM categories WHERE id = :catId");
+        deleteQuery.bindValue(":catId", currentCategoryId);
+
+        if (deleteQuery.exec()) {
+            logAction("Delete", QString("Удалена категория материалов: %1").arg(catName), currentCategoryId);
+
+            QMessageBox::information(this, "Успех", "Категория успешно удалена.");
+
+            reset_categories_ui();
+            load_categories_table();
+        } else {
+            qCritical() << "Ошибка удаления категории:" << deleteQuery.lastError().text();
+            QMessageBox::critical(this, "Ошибка", "Не удалось удалить категорию.\nВозможно, существуют другие скрытые связи в БД.");
+        }
     }
 }
 
@@ -729,6 +1009,68 @@ void MainWidget::table_materials_clicked(int row)
     }
 }
 
+void MainWidget::deleteMaterial()
+{
+    if (currentMaterialId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Выберите материал для удаления!");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery checkQuery(db);
+    checkQuery.prepare("SELECT "
+                       "(SELECT COUNT(*) FROM batches WHERE material_id = :matId1) + "
+                       "(SELECT COUNT(*) FROM inventory_transactions WHERE material_id = :matId2)");
+    checkQuery.bindValue(":matId1", currentMaterialId);
+    checkQuery.bindValue(":matId2", currentMaterialId);
+
+    if (checkQuery.exec() && checkQuery.next()) {
+        int usageCount = checkQuery.value(0).toInt();
+        if (usageCount > 0) {
+            QMessageBox::warning(this, "Удаление запрещено",
+                                 "Невозможно удалить материал, так как по нему уже есть история движений (поступления, списания или инвентаризации).\n\n"
+                                 "Его удаление приведет к нарушению целостности финансовой отчетности и текущих остатков.");
+            return;
+        }
+    } else {
+        qCritical() << "Ошибка проверки связей материала:" << checkQuery.lastError().text();
+        return;
+    }
+
+    QString matName = "Неизвестный материал";
+    QSqlQuery nameQuery(db);
+    nameQuery.prepare("SELECT name FROM materials WHERE id = :matId");
+    nameQuery.bindValue(":matId", currentMaterialId);
+    if (nameQuery.exec() && nameQuery.next()) {
+        matName = nameQuery.value(0).toString();
+    }
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  QString("Вы действительно хотите безвозвратно удалить материал '%1'?").arg(matName),
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QSqlQuery deleteQuery(db);
+        deleteQuery.prepare("DELETE FROM materials WHERE id = :matId");
+        deleteQuery.bindValue(":matId", currentMaterialId);
+
+        if (deleteQuery.exec()) {
+            logAction("Delete", QString("Удален материал из справочника: %1").arg(matName), currentMaterialId);
+
+            QMessageBox::information(this, "Успех", "Материал успешно удален.");
+
+            reset_materials_ui();
+            load_materials_table();
+        } else {
+            qCritical() << "Ошибка удаления материала:" << deleteQuery.lastError().text();
+            QMessageBox::critical(this, "Ошибка", "Не удалось удалить материал.\nВозможно, в базе остались скрытые связи.");
+        }
+    }
+}
+
 void MainWidget::load_suppliers_table()
 {
     reset_suppliers_ui();
@@ -795,6 +1137,65 @@ void MainWidget::table_suppliers_clicked(int row)
         ui->pb_admin_editSupplier->setEnabled(true);
         ui->pb_admin_deleteSupplier->setEnabled(true);
         qDebug()<<"ID поставщика: "<<currentSupplierId;
+    }
+}
+
+void MainWidget::deleteSupplier()
+{
+    if (currentSupplierId <= 0) {
+        QMessageBox::warning(this, "Внимание", "Выберите поставщика для удаления!");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database("db_dp_kalugina");
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery checkQuery(db);
+    checkQuery.prepare("SELECT COUNT(*) FROM batches WHERE supplier_id = :supId");
+    checkQuery.bindValue(":supId", currentSupplierId);
+
+    if (checkQuery.exec() && checkQuery.next()) {
+        int usageCount = checkQuery.value(0).toInt();
+        if (usageCount > 0) {
+            QMessageBox::warning(this, "Удаление запрещено",
+                                 "Невозможно удалить поставщика, так как от него уже зафиксированы поставки материалов (сохранены в партиях).\n\n"
+                                 "Удаление приведет к нарушению целостности истории закупок и отчетов.");
+            return;
+        }
+    } else {
+        qCritical() << "Ошибка проверки связей поставщика:" << checkQuery.lastError().text();
+        return;
+    }
+
+    QString supName = "Неизвестный поставщик";
+    QSqlQuery nameQuery(db);
+    nameQuery.prepare("SELECT name FROM suppliers WHERE id = :supId");
+    nameQuery.bindValue(":supId", currentSupplierId);
+    if (nameQuery.exec() && nameQuery.next()) {
+        supName = nameQuery.value(0).toString();
+    }
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  QString("Вы действительно хотите безвозвратно удалить поставщика '%1'?").arg(supName),
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QSqlQuery deleteQuery(db);
+        deleteQuery.prepare("DELETE FROM suppliers WHERE id = :supId");
+        deleteQuery.bindValue(":supId", currentSupplierId);
+
+        if (deleteQuery.exec()) {
+            logAction("Delete", QString("Удален поставщик из справочника: %1").arg(supName), currentSupplierId);
+
+            QMessageBox::information(this, "Успех", "Поставщик успешно удален.");
+
+            reset_suppliers_ui();
+            load_suppliers_table();
+        } else {
+            qCritical() << "Ошибка удаления поставщика:" << deleteQuery.lastError().text();
+            QMessageBox::critical(this, "Ошибка", "Не удалось удалить поставщика.\nВозможно, в базе остались скрытые связи.");
+        }
     }
 }
 

@@ -8,6 +8,10 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
+    app.setOrganizationName("RailwayTech");
+    app.setOrganizationDomain("tech.rzd");
+    app.setApplicationName("TSD_Inventory");
+
     qmlRegisterType<BarcodeScanner>("AppComponents", 1, 0, "BarcodeScanner");
 
     QQmlApplicationEngine engine;

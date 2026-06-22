@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtMultimedia
 import AppComponents 1.0
+import QtCore // Добавлено для сохранения настроек
 
 ApplicationWindow {
     id: window
@@ -11,19 +12,23 @@ ApplicationWindow {
     visible: true
     title: qsTr("Склад ТСД")
 
-    property string serverIp: "192.168.1.101"
-    property int serverPort: 54321
-
-    ListModel {
-        id: materialsModel
+    // Сохранение настроек в память устройства
+    Settings {
+        id: appSettings
+        property string serverIp: "192.168.1.101"
+        property int serverPort: 54321
     }
 
-    ListModel {
-        id: warehouseModel
-    }
+    ListModel { id: materialsModel }
+    ListModel { id: warehouseModel }
+    ListModel { id: scannedItemsModel }
 
-    ListModel {
-        id: scannedItemsModel
+    // Универсальная функция для показа красивых уведомлений
+    function showPopup(title, msg, isError) {
+        popupTitle.text = title
+        popupText.text = msg
+        popupTitle.color = isError ? "#d32f2f" : "#2e7d32" // Красный заголовок для ошибок, зеленый для успеха
+        msgPopup.open()
     }
 
     Connections {
@@ -31,55 +36,38 @@ ApplicationWindow {
 
         function onMaterialsReceived(jsonData) {
             materialsModel.clear()
-            var materialsArray = JSON.parse(jsonData)
-            for (var i = 0; i < materialsArray.length; i++) {
-                var item = materialsArray[i]
-                materialsModel.append({
-                    "matId": item.id,
-                    "matName": item.name
-                })
+            var array = JSON.parse(jsonData)
+            for (var i = 0; i < array.length; i++) {
+                materialsModel.append({"matId": array[i].id, "matName": array[i].name})
             }
+            showPopup("Успех", "База материалов загружена (" + array.length + " позиций).", false)
         }
 
         function onWarehouseReceived(jsonData) {
             warehouseModel.clear()
             var array = JSON.parse(jsonData)
             for (var i = 0; i < array.length; i++) {
-                var item = array[i]
                 warehouseModel.append({
-                    "wId": item.material_id,
-                    "wCategory": item.category,
-                    "wName": item.name,
-                    "wQty": item.quantity,
-                    "wUnit": item.unit,
-                    "wPrice": item.avg_price,
-                    "wSum": item.total_sum
+                    "wId": array[i].material_id, "wCategory": array[i].category, "wName": array[i].name,
+                    "wQty": array[i].quantity, "wUnit": array[i].unit, "wPrice": array[i].avg_price, "wSum": array[i].total_sum
                 })
             }
+            showPopup("Успех", "Текущие остатки обновлены.", false)
         }
 
         function onInventorySentSuccess() {
             scannedItemsModel.clear()
-            popupText.text = "Инвентаризация успешно отправлена и сохранена на ПК!"
-            msgPopup.open()
+            showPopup("Отправлено", "Инвентаризация успешно сохранена в базе на ПК!", false)
         }
 
         function onErrorOccurred(errorMsg) {
-            popupText.text = "ОШИБКА:\n" + errorMsg
-            msgPopup.open()
+            showPopup("Ошибка сети", errorMsg, true)
         }
     }
 
     header: ToolBar {
         Label {
-            text: {
-                switch(swipeView.currentIndex) {
-                    case 0: return "Инвентаризация"
-                    case 1: return "База материалов"
-                    case 2: return "Текущие остатки"
-                    case 3: return "Настройки сети"
-                }
-            }
+            text: ["Инвентаризация", "База материалов", "Остатки", "Настройки"][swipeView.currentIndex]
             font.pixelSize: 20
             anchors.centerIn: parent
             font.bold: true
@@ -91,63 +79,56 @@ ApplicationWindow {
         anchors.fill: parent
         currentIndex: tabBar.currentIndex
 
-        // ЭКРАН 1: ИНВЕНТАРИЗАЦИЯ СО СКАНЕРОМ (Адаптировано для Qt 5)
+        // ЭКРАН 1: ИНВЕНТАРИЗАЦИЯ
         Page {
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
 
-                        // 1. Блок камеры и сканера
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: parent.width * 0.7
-                            Layout.preferredHeight: parent.width * 0.7
-                            color: "black"
-                            radius: 10
-                            clip: true
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: parent.width * 0.7
+                    Layout.preferredHeight: parent.width * 0.7
+                    color: "black"
+                    radius: 10
+                    clip: true
 
-                            // Сессия захвата Qt 6
-                            CaptureSession {
-                                                    camera: Camera {
-                                                        id: camera
-                                                        active: swipeView.currentIndex === 0
-                                                        focusMode: Camera.FocusModeAuto // <--- ИСПРАВЛЕНО
-                                                    }
-                                                    videoOutput: videoOutput
-                                                }
-
-                            // Вывод видео на экран
-                            VideoOutput {
-                                id: videoOutput
-                                anchors.fill: parent
-                                fillMode: VideoOutput.PreserveAspectCrop
-                            }
-
-                            // Наш самописный C++ сканер!
-                            BarcodeScanner {
-                                id: scanner
-                                // Передаем ему поток кадров прямо из экрана
-                                videoSink: videoOutput.videoSink
-                                active: swipeView.currentIndex === 0
-
-                                // Когда C++ найдет код, сработает этот сигнал
-                                onBarcodeDecoded: function(text) {
-                                    scanResultField.text = text
-                                    quantityField.forceActiveFocus()
-                                    scanner.active = false // Ставим на паузу
-                                    resetTimer.start()
-                                }
-                            }
-
-                            Timer {
-                                id: resetTimer
-                                interval: 2000
-                                onTriggered: scanner.active = true // Снимаем с паузы
-                            }
+                    CaptureSession {
+                        camera: Camera {
+                            id: camera
+                            active: swipeView.currentIndex === 0
+                            focusMode: Camera.FocusModeAuto
                         }
+                        videoOutput: videoOutput
+                    }
 
-                // 2. Строка с отсканированным кодом
+                    VideoOutput {
+                        id: videoOutput
+                        anchors.fill: parent
+                        fillMode: VideoOutput.PreserveAspectCrop
+                    }
+
+                    BarcodeScanner {
+                        id: scanner
+                        videoSink: videoOutput.videoSink
+                        active: swipeView.currentIndex === 0
+
+                        onBarcodeDecoded: function(text) {
+                            scanResultField.text = text
+                            quantityField.forceActiveFocus()
+                            scanner.active = false
+                            resetTimer.start()
+                        }
+                    }
+
+                    Timer {
+                        id: resetTimer
+                        interval: 2000
+                        onTriggered: scanner.active = true
+                    }
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
                     TextField {
@@ -159,12 +140,11 @@ ApplicationWindow {
                         text: "Сброс"
                         onClicked: {
                             scanResultField.text = ""
-                            zxingFilter.active = true
+                            scanner.active = true
                         }
                     }
                 }
 
-                // 3. Строка количества и кнопка "Добавить"
                 RowLayout {
                     Layout.fillWidth: true
                     TextField {
@@ -176,20 +156,34 @@ ApplicationWindow {
                     Button {
                         text: "Добавить"
                         onClicked: {
-                            if (scanResultField.text !== "" && quantityField.text !== "") {
-                                scannedItemsModel.append({
-                                    "matId": parseInt(scanResultField.text),
-                                    "actualQty": parseFloat(quantityField.text.replace(',', '.'))
-                                })
-                                scanResultField.text = ""
-                                quantityField.text = ""
-                                zxingFilter.active = true // Снова включаем сканер
+                            // ЗАЩИТА: Пустые поля
+                            if (scanResultField.text === "") {
+                                showPopup("Внимание", "Отсканируйте или введите ID материала!", true)
+                                return;
                             }
+                            if (quantityField.text === "") {
+                                showPopup("Внимание", "Введите фактическое количество!", true)
+                                return;
+                            }
+
+                            // ЗАЩИТА: Запятые и нули
+                            var qty = parseFloat(quantityField.text.replace(',', '.'))
+                            if (isNaN(qty) || qty <= 0) {
+                                showPopup("Ошибка ввода", "Количество должно быть больше нуля!", true)
+                                return;
+                            }
+
+                            scannedItemsModel.append({
+                                "matId": parseInt(scanResultField.text),
+                                "actualQty": qty
+                            })
+                            scanResultField.text = ""
+                            quantityField.text = ""
+                            scanner.active = true
                         }
                     }
                 }
 
-                // 4. Список добавленных позиций
                 ListView {
                     id: scannedListView
                     Layout.fillWidth: true
@@ -209,20 +203,8 @@ ApplicationWindow {
                         RowLayout {
                             anchors.fill: parent
                             anchors.margins: 10
-
-                            Text {
-                                text: "ID: " + model.matId
-                                font.bold: true
-                                color: "#1565c0"
-                                Layout.minimumWidth: 60
-                            }
-
-                            Text {
-                                text: "Факт: " + model.actualQty
-                                Layout.fillWidth: true
-                                font.pixelSize: 16
-                            }
-
+                            Text { text: "ID: " + model.matId; font.bold: true; color: "#1565c0"; Layout.minimumWidth: 60 }
+                            Text { text: "Факт: " + model.actualQty; Layout.fillWidth: true; font.pixelSize: 16 }
                             Button {
                                 text: "X"
                                 Layout.preferredWidth: 40
@@ -233,7 +215,6 @@ ApplicationWindow {
                     }
                 }
 
-                // 5. Отправка на ПК
                 Button {
                     text: "Отправить данные на ПК"
                     Layout.fillWidth: true
@@ -241,7 +222,11 @@ ApplicationWindow {
                     Material.background: Material.Green
 
                     onClicked: {
-                        if (scannedItemsModel.count === 0) return;
+                        // ЗАЩИТА: Отправка пустого списка
+                        if (scannedItemsModel.count === 0) {
+                            showPopup("Отмена", "Список инвентаризации пуст. Добавьте материалы.", true)
+                            return;
+                        }
 
                         var dataArray = []
                         for (var i = 0; i < scannedItemsModel.count; i++) {
@@ -250,9 +235,7 @@ ApplicationWindow {
                                 "actual_quantity": scannedItemsModel.get(i).actualQty
                             })
                         }
-
-                        var jsonString = JSON.stringify(dataArray)
-                        netManager.sendInventory(window.serverIp, window.serverPort, jsonString)
+                        netManager.sendInventory(appSettings.serverIp, appSettings.serverPort, JSON.stringify(dataArray))
                     }
                 }
             }
@@ -263,65 +246,40 @@ ApplicationWindow {
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 10
-
                 Button {
                     text: "Обновить список"
                     Layout.fillWidth: true
-                    onClicked: netManager.fetchMaterials(window.serverIp, window.serverPort)
+                    onClicked: netManager.fetchMaterials(appSettings.serverIp, appSettings.serverPort)
                 }
-
                 ListView {
                     id: materialsListView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
                     spacing: 5
-
                     model: materialsModel
-
                     delegate: Rectangle {
-                        width: materialsListView.width
-                        height: 50
-                        color: "#f0f0f0"
-                        radius: 5
-                        border.color: "#cccccc"
-                        border.width: 1
-
+                        width: materialsListView.width; height: 50; color: "#f0f0f0"; radius: 5; border.color: "#cccccc"
                         RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-
-                            Text {
-                                text: "ID: " + model.matId
-                                font.bold: true
-                                color: "#444444"
-                                Layout.minimumWidth: 40
-                            }
-
-                            Text {
-                                text: model.matName
-                                font.pixelSize: 16
-                                Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                            }
+                            anchors.fill: parent; anchors.margins: 10
+                            Text { text: "ID: " + model.matId; font.bold: true; color: "#444444"; Layout.minimumWidth: 40 }
+                            Text { text: model.matName; font.pixelSize: 16; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         }
                     }
                 }
             }
         }
 
-        // ЭКРАН 3: ТЕКУЩИЕ ОСТАТКИ
+        // ЭКРАН 3: ОСТАТКИ
         Page {
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 10
-
                 Button {
                     text: "Обновить остатки"
                     Layout.fillWidth: true
-                    onClicked: netManager.fetchWarehouse(window.serverIp, window.serverPort)
+                    onClicked: netManager.fetchWarehouse(appSettings.serverIp, appSettings.serverPort)
                 }
-
                 ListView {
                     id: warehouseListView
                     Layout.fillWidth: true
@@ -329,56 +287,17 @@ ApplicationWindow {
                     clip: true
                     spacing: 10
                     model: warehouseModel
-
                     delegate: Rectangle {
-                        width: warehouseListView.width
-                        height: 90
-                        color: "#ffffff"
-                        radius: 8
-                        border.color: "#cccccc"
-                        border.width: 1
-
+                        width: warehouseListView.width; height: 90; color: "#ffffff"; radius: 8; border.color: "#cccccc"
                         ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 2
-
-                            Text {
-                                text: model.wName
-                                font.bold: true
-                                font.pixelSize: 16
-                                color: "#222222"
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                text: model.wCategory
-                                font.pixelSize: 12
-                                color: "#777777"
-                                Layout.fillWidth: true
-                            }
-
+                            anchors.fill: parent; anchors.margins: 10; spacing: 2
+                            Text { text: model.wName; font.bold: true; font.pixelSize: 16; Layout.fillWidth: true; elide: Text.ElideRight }
+                            Text { text: model.wCategory; font.pixelSize: 12; color: "#777777"; Layout.fillWidth: true }
                             RowLayout {
-                                Layout.fillWidth: true
-                                Layout.topMargin: 5
-
-                                Text {
-                                    text: "В наличии: " + Number(model.wQty).toLocaleString(Qt.locale(), 'f', 2) + " " + model.wUnit
-                                    font.pixelSize: 14
-                                    color: "#006600"
-                                    Layout.alignment: Qt.AlignLeft
-                                }
-
+                                Layout.fillWidth: true; Layout.topMargin: 5
+                                Text { text: "В наличии: " + Number(model.wQty).toLocaleString(Qt.locale(), 'f', 2) + " " + model.wUnit; font.pixelSize: 14; color: "#006600"; Layout.alignment: Qt.AlignLeft }
                                 Item { Layout.fillWidth: true }
-
-                                Text {
-                                    text: "Сумма: " + Number(model.wSum).toLocaleString(Qt.locale(), 'f', 2) + " ₽"
-                                    font.bold: true
-                                    font.pixelSize: 14
-                                    color: "#333333"
-                                    Layout.alignment: Qt.AlignRight
-                                }
+                                Text { text: "Сумма: " + Number(model.wSum).toLocaleString(Qt.locale(), 'f', 2) + " ₽"; font.bold: true; font.pixelSize: 14; Layout.alignment: Qt.AlignRight }
                             }
                         }
                     }
@@ -386,7 +305,7 @@ ApplicationWindow {
             }
         }
 
-        // ЭКРАН 4: НАСТРОЙКИ СЕТИ
+        // ЭКРАН 4: НАСТРОЙКИ (с сохранением)
         Page {
             ColumnLayout {
                 anchors.centerIn: parent
@@ -397,23 +316,33 @@ ApplicationWindow {
                 TextField {
                     id: ipInput
                     Layout.fillWidth: true
-                    text: window.serverIp
+                    text: appSettings.serverIp // Подтягиваем из памяти
                 }
 
                 Text { text: "Порт:"; font.bold: true }
                 TextField {
                     id: portInput
                     Layout.fillWidth: true
-                    text: window.serverPort.toString()
+                    text: appSettings.serverPort.toString()
                     inputMethodHints: Qt.ImhDigitsOnly
                 }
 
                 Button {
                     text: "Сохранить настройки"
                     Layout.fillWidth: true
+                    Material.background: Material.Primary
                     onClicked: {
-                        window.serverIp = ipInput.text
-                        window.serverPort = parseInt(portInput.text)
+                        // ЗАЩИТА: пустые поля
+                        if (ipInput.text === "" || portInput.text === "") {
+                            showPopup("Ошибка", "Заполните оба поля!", true)
+                            return;
+                        }
+
+                        // Сохраняем в память устройства
+                        appSettings.serverIp = ipInput.text
+                        appSettings.serverPort = parseInt(portInput.text)
+
+                        showPopup("Настройки", "Данные сервера успешно сохранены.", false)
                     }
                 }
             }
@@ -425,25 +354,18 @@ ApplicationWindow {
         currentIndex: swipeView.currentIndex
         width: parent.width
 
-        TabButton {
-            text: qsTr("Скан")
-        }
-        TabButton {
-            text: qsTr("База")
-        }
-        TabButton {
-            text: qsTr("Склад")
-        }
-        TabButton {
-            text: qsTr("Настройки")
-        }
+        TabButton { text: qsTr("Скан") }
+        TabButton { text: qsTr("База") }
+        TabButton { text: qsTr("Склад") }
+        TabButton { text: qsTr("Настройки") }
     }
 
+    // УНИВЕРСАЛЬНОЕ ВСПЛЫВАЮЩЕЕ ОКНО С ЗАГОЛОВКОМ
     Popup {
         id: msgPopup
         anchors.centerIn: parent
-        width: 250
-        height: 100
+        width: parent.width * 0.85
+        height: 140
         modal: true
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -452,15 +374,31 @@ ApplicationWindow {
             color: "#ffffff"
             radius: 8
             border.color: "#cccccc"
+            border.width: 1
         }
 
-        contentItem: Text {
-            id: popupText
-            text: ""
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 14
+        contentItem: ColumnLayout {
+            spacing: 10
+            Text {
+                id: popupTitle
+                text: "Заголовок"
+                font.bold: true
+                font.pixelSize: 18
+                Layout.alignment: Qt.AlignHCenter
+            }
+            Text {
+                id: popupText
+                text: "Описание ошибки или успеха"
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+                font.pixelSize: 14
+            }
+            Button {
+                text: "ОК"
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: msgPopup.close()
+            }
         }
     }
 }

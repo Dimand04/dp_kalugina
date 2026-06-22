@@ -29,7 +29,7 @@
    <item row="0" column="0">
     <widget class="QTabWidget" name="tabw_main">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -1668,7 +1668,7 @@
        <item row="0" column="0">
         <widget class="QTabWidget" name="tabw_warehouse">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="tab_12">
           <attribute name="title">
@@ -2828,7 +2828,7 @@
        <item row="0" column="0">
         <widget class="QTabWidget" name="tabw_administration">
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="tab_6">
           <attribute name="title">

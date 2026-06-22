@@ -65,6 +65,7 @@ private slots:
     void show_edit_user();
     void table_users_clicked(int row);
     void reset_users_ui();
+    void deleteUser();
 
     void load_roles_table();
     void filter_roles(const QString &searchText);
@@ -72,24 +73,28 @@ private slots:
     void table_roles_clicked(int row);
     void reset_roles_ui();
     void loadRoles();
+    void deleteRole();
 
     void load_categories_table();
     void reset_categories_ui();
     void filter_categories(const QString &searchText);
     void show_edit_category();
     void table_categories_clicked(int row);
+    void deleteCategory();
 
     void load_materials_table();
     void reset_materials_ui();
     void filter_materials(const QString &searchText);
     void show_edit_material();
     void table_materials_clicked(int row);
+    void deleteMaterial();
 
     void load_suppliers_table();
     void reset_suppliers_ui();
     void filter_suppliers(const QString &searchText);
     void show_edit_supplier();
     void table_suppliers_clicked(int row);
+    void deleteSupplier();
 
     void loadWarehouseTable();
     void filter_warehouse();
